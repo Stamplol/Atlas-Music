@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Atlas Music</string>
+    <string name="app_tagline">Ad-less Music.</string>
+    <string name="now_playing_notification">Atlas Music playback</string>
+    <string name="downloads_notification">Downloads in progress</string>
+    <string name="permission_rationale_audio">Atlas Music scans your device for audio files you already own to build your library. It never uploads them anywhere.</string>
+    <string name="permission_rationale_notifications">Notifications are used for playback controls and download progress. They are never used for ads or promotions.</string>
+    <string name="widget_label">Atlas Music</string>
+    <string name="widget_description">Now playing controls, cover art and quick play/pause.</string>
+    <string name="tile_label">Atlas Music</string>
+    <string name="tile_description">Play or pause Atlas Music.</string>
+    <string name="widget_no_track">No track playing</string>
+</resources>

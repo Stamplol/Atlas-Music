@@ -1,0 +1,75 @@
+# Atlas Music — gitignore
+# Android / Kotlin / Compose (Gradle) + Chaquopy Python + emulator smoke
+
+# Gradle / Android Studio
+.gradle/
+.kotlin/
+*.iml
+.idea/
+captures/
+.externalNativeBuild
+.cxx
+local.properties
+**/.idea
+**/.tasks
+
+# Build outputs (safe to rebuild from source)
+**/build/
+out/
+*.class
+*.dex
+*.apk
+*.aab
+*.ap_
+# NOTE: atlas-debug.apk (~113 MB) is deliberately ignored — it exceeds GitHub's
+# 100 MB/file limit. Keep the local copy or attach it as a Release asset.
+*.so
+dex/
+Debug/
+
+# Android SDK / emulator (machine-local)
+# ANDROID_HOME/ANDROID_SDK_ROOT are passed via env — nothing to commit here
+.sdk/
+*.keystore
+*.jks
+key.properties
+
+# Chaquopy Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.eggs/
+build/python/
+app/build/python/
+
+# Stray extracted AAR/APK contents accidentally at repo root (Feb 1980 stamp, media3 session)
+# Real sources live under app/src/main/ — never commit the root copies
+/AndroidManifest.xml
+/classes.jar
+/R.txt
+/META-INF/
+/res/
+/annotations.zip
+
+# Local test / coverage
+.coverage
+/coverage/
+*.exec
+test-results/
+*.hprof
+*.log
+
+# OS / editors
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/settings.json
+.vscode/launch.json
+
+# Misc
+*.cxx
+/cmake-build*/

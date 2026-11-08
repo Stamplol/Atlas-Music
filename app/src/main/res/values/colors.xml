@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="atlas_icon_bg">#10131A</color>
+    <color name="atlas_accent">#E7A93C</color>
+    <color name="atlas_deep">#0E1016</color>
+    <color name="atlas_surface">#161A23</color>
+</resources>

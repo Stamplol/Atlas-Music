@@ -1,0 +1,46 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="432dp"
+    android:height="432dp"
+    android:viewportWidth="432"
+    android:viewportHeight="432">
+    <!-- Atlas Music — forged compass rose inside meridian ring.
+         Single-color tint still reads as a star; launcher two-tone reads premium. -->
+
+    <!-- Meridian globe ellipses (quiet, 35% alpha) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#59F2F0E9"
+        android:strokeWidth="4"
+        android:pathData="M216,82 C 286,110 286,322 216,350 C 146,322 146,110 216,82" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#59F2F0E9"
+        android:strokeWidth="4"
+        android:pathData="M82,216 C 110,146 322,146 350,216 C 322,286 110,286 82,216" />
+
+    <!-- Compass rose star — filled gold -->
+    <path
+        android:fillColor="#E7A93C"
+        android:pathData="M216,92 L242,204 L268,216 L242,228 L216,340 L190,228 L164,216 L190,204 Z" />
+
+    <!-- Center pivot — punched out (shows bg through hole) -->
+    <path
+        android:fillColor="#0B0D12"
+        android:pathData="M216,200 a16,16 0 1,1 0,32 a16,16 0 1,1 0,-32" />
+
+    <!-- Outer ring — crisp 16-stroke, sits on top of meridian but under star tips -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F2F0E9"
+        android:strokeWidth="16"
+        android:strokeLineCap="round"
+        android:pathData="M216,76 a140,140 0 1,1 0,280 a140,140 0 1,1 0,-280" />
+
+    <!-- Cardinal ticks — tiny north/south diamonds on the ring, gold -->
+    <path
+        android:fillColor="#E7A93C"
+        android:pathData="M216,66 L222,76 L216,86 L210,76 Z" />
+    <path
+        android:fillColor="#9C9A90"
+        android:pathData="M216,346 L222,356 L216,366 L210,356 Z" />
+</vector>
