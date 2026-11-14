@@ -30,6 +30,7 @@ object ServiceLocator {
         private set
     lateinit var ytdlpUpdater: YtdlpUpdater
         private set
+    lateinit var lyricsRepository: com.atlas.music.data.repo.LyricsRepository
     lateinit var playbackConnection: PlaybackConnection
         private set
 
@@ -47,6 +48,7 @@ object ServiceLocator {
             downloadManager = DownloadManager(appContext, database, musicRepository, settings)
             ytdlpUpdater = YtdlpUpdater(appContext, settings)
             playbackConnection = PlaybackConnection(appContext).apply { connect() }
+            lyricsRepository = com.atlas.music.data.repo.LyricsRepository(appContext)
             initialized = true
         }
     }

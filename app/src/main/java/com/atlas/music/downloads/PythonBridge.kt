@@ -99,6 +99,8 @@ class PythonBridge(private val appContext: Context) {
 
     fun writeTags(path: String, title: String, artist: String, album: String, genre: String, year: Int, track: Int, disc: Int): JSONObject =
         call("write_tags", path, title, artist, album, genre, year, track, disc)
+
+    fun readEmbeddedLyrics(path: String): JSONObject = call("read_lyrics", path)
 }
 
 /** Bridge object passed to Python; Chaquopy exposes public methods to the interpreter. */

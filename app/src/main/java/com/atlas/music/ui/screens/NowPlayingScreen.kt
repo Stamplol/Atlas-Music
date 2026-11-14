@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QueueMusic
@@ -166,8 +167,11 @@ fun NowPlayingScreen(
     val landscape = isLandscape()
     val toolsState by toolsVm.state.collectAsState()
     var showToolsPanel by remember { mutableStateOf(false) }
+    var showLyrics by remember { mutableStateOf(false) }
     val hasActiveTool = toolsState.running || sleepTimerEndAt != null
     LaunchedEffect(hasActiveTool) { if (hasActiveTool) showToolsPanel = true }
+    LaunchedEffect(showLyrics) { if (showLyrics) showToolsPanel = false }
+    LaunchedEffect(showToolsPanel) { if (showToolsPanel) showLyrics = false }
     // Immersive: hide Android status + nav bars while landscape player is up (swipe to peek).
     DisposableEffect(landscape) {
         val activity = context as? android.app.Activity
@@ -219,8 +223,16 @@ fun NowPlayingScreen(
 
         if (landscape) {
             Row(modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                // LEFT: Active tool (if any) or Art + Meridian
-                if (showToolsPanel) {
+                // LEFT: Lyrics or Active tool or Art + Meridian
+                if (showLyrics) {
+                    Box(modifier = Modifier.weight(1f).fillMaxHeight().padding(horizontal = 8.dp, vertical = 4.dp)) {
+                        com.atlas.music.ui.components.LyricsPanel(
+                            track = track ?: return@Box,
+                            positionMs = state.positionMs,
+                            onClose = { showLyrics = false },
+                        )
+                    }
+                } else if (showToolsPanel) {
                     Box(modifier = Modifier.weight(1f).fillMaxHeight().padding(horizontal = 8.dp, vertical = 10.dp)) {
                         ToolsActivePanel(
                             toolsState = toolsState,
@@ -283,6 +295,9 @@ fun NowPlayingScreen(
                         Spacer(Modifier.weight(1f))
                         Text("NOW PLAYING", style = MaterialTheme.typography.titleSmall, color = Color.White.copy(alpha = 0.65f))
                         Spacer(Modifier.weight(1f))
+                        IconButton(onClick = { showLyrics = !showLyrics }) {
+                            Icon(Icons.Filled.Lyrics, contentDescription = "Lyrics", tint = if (showLyrics) MaterialTheme.colorScheme.primary else Color.White)
+                        }
                         IconButton(onClick = onOpenInfo) {
                             Icon(Icons.Filled.GraphicEq, contentDescription = "Track information", tint = Color.White)
                         }
@@ -416,6 +431,14 @@ fun NowPlayingScreen(
                     ) {}
                 }
             }
+        } else if (showLyrics) {
+            Box(modifier = Modifier.fillMaxSize().padding(top = 12.dp)) {
+                com.atlas.music.ui.components.LyricsPanel(
+                    track = track ?: return@Box,
+                    positionMs = state.positionMs,
+                    onClose = { showLyrics = false },
+                )
+            }
         } else LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 10.dp),
@@ -432,6 +455,9 @@ fun NowPlayingScreen(
                         color = Color.White.copy(alpha = 0.65f),
                     )
                     Spacer(Modifier.weight(1f))
+                    IconButton(onClick = { showLyrics = !showLyrics }) {
+                        Icon(Icons.Filled.Lyrics, contentDescription = "Lyrics", tint = if (showLyrics) MaterialTheme.colorScheme.primary else Color.White)
+                    }
                     IconButton(onClick = onOpenInfo) {
                         Icon(Icons.Filled.GraphicEq, contentDescription = "Track information", tint = Color.White)
                     }

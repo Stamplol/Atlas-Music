@@ -249,3 +249,60 @@ def write_tags(path, title, artist, album, genre, year, track, disc):
         return json.dumps({"ok": True})
     except Exception:
         return json.dumps({"ok": False, "error": traceback.format_exc(limit=2)})
+
+
+def read_lyrics(path):
+    """Read embedded lyrics. Returns JSON {ok, source, lyrics_raw}.
+
+    Probes ID3 USLT (MP3), Vorbis `lyrics` (Ogg/Vorbis/FLAC), and MP4 \xa9lyr.
+    Unsynced text only — synced LRC goes through sidecar files.
+    """
+    try:
+        from mutagen import File as MutagenFile
+        from mutagen.mp3 import MP3
+        from mutagen.id3 import ID3
+        from mutagen.flac import FLAC
+        from mutagen.oggvorbis import OggVorbis
+        from mutagen.mp4 import MP4
+    except Exception:
+        return json.dumps({"ok": False, "error": "mutagen unavailable"})
+
+    if not path or not os.path.isfile(path):
+        return json.dumps({"ok": False, "error": "file not found"})
+
+    text = None
+    source = None
+    try:
+        file_id = os.path.splitext(path.lower())[1]
+        if file_id in (".mp3", ".aac", ".wav"):
+            try:
+                tags = ID3(path)
+                frames = tags.getall("USLT")
+                if frames:
+                    text = frames[0].text
+                    source = "USLT"
+            except Exception:
+                pass
+        candidate = MutagenFile(path)
+        if text is None and candidate is not None:
+            tags = getattr(candidate, "tags", None)
+            # Vorbis-style comments (FLAC/Ogg/Opus): tags dict with custom keys
+            if isinstance(tags, dict):
+                for key in ("lyrics", "LYRICS", "lyric", "unsyncedlyrics", "syncedlyrics"):
+                    if key in tags:
+                        v = tags[key]
+                        text = v[0] if isinstance(v, list) else str(v)
+                        source = f"vorbis:{key}"
+                        break
+            # MP4 / m4a: \xa9lyr
+            if text is None and hasattr(candidate, "keys"):
+                if "\xa9lyr" in candidate:
+                    v = candidate["\xa9lyr"]
+                    text = v[0] if isinstance(v, list) else str(v)
+                    source = "mp4"
+    except Exception:
+        return json.dumps({"ok": False, "error": traceback.format_exc(limit=2)})
+
+    if not text:
+        return json.dumps({"ok": False, "error": "no embedded lyrics"})
+    return json.dumps({"ok": True, "source": source or "embedded", "lyrics_raw": text})
