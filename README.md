@@ -88,7 +88,7 @@ Data: `MediaStore / SAF → scan() → Room → Flow → Compose`. Playback: `UI
 
 **Tag editing** — row menu → *Edit tags…* or info sheet → Title/Artist/Album/Genre/Year/Track/Disc. Writes DB instantly with `userEdited` flag (survives rescans) + best-effort Mutagen embedded rewrite (ID3/Vorbis/MP4). *Fix unknowns* batch mode + *Reset to file values*.
 
-**Now Playing** — Meridian arc (gold dot rides progress), checksum-seeded covers (SHA-256 of first 1 MB + size), blurred veil, live output label, speed pill. Landscape: cover left, controls right, **immersive** (status/nav hidden, swipe to peek), SVG wrench bottom-right toggles left-pane tools.
+**Now Playing** — Meridian arc (gold dot rides progress), checksum-seeded covers (SHA-256 of first 1 MB + size), blurred veil, live output label, speed pill. Landscape: cover left, controls right, **immersive** (status/nav hidden, swipe to peek), SVG wrench bottom-right toggles left-pane tools. **Lyrics (offline)** — sidecar `.lrc` next to the track wins; falls back to embedded USLT/Vorbis/MP4 tags via mutagen. Synced lines highlight the current position; raw text renders as a scroll. Toggle in the top bar — both orientations.
 
 **Notification / QS / widgets** — `atlas.playback`, `VISIBILITY_PUBLIC`, gold light, mono small icon. Deck: Prev · Play/Pause · Next · Shuffle · Repeat · ♥ (+ rich text `Artist · Album · Year · Format`). Tap rhythm: shade chip → expanded deck. Tile: one-tap play/pause. 7 widgets (covers via `AtlasBitmapLoader`), Pomodoro/sleep from Tools.
 
@@ -122,6 +122,7 @@ No accounts, no telemetry SDK, no uploads of library/history. `READ_MEDIA_AUDIO`
 - **Crossfade is a boundary fade**, not DJ beat-matching; gapless is always on.
 - **File tag rewrite is best-effort.** Works when the source is a real file (mutagen handles MP3/FLAC/Ogg/M4A). SAF-only files save to Atlas only.
 - **Queue skim** — notification/scans hold decoded durations only when the extractor succeeds; fake/untagged test files sit at `0:00` in every player.
+- **Lyrics are offline from your file** — dropping an `.lrc` with the same stem next to the audio is enough. Embedded USLT/Vorbis/MP4 tags are read on your device, nothing is fetched.
 - **Drag-reorder** is up/down arrows; no FFmpeg (see Downloads); no BLE/Auto interop.
 
 ## Legal
