@@ -9,6 +9,7 @@ import com.atlas.music.di.SettingsRepository
 import com.atlas.music.util.DownloadStateMachine
 import com.atlas.music.util.UrlValidator
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -43,6 +44,8 @@ class DownloadManager(
     private val dao = db.downloadDao()
     private val pythonBridge = PythonBridge(context)
     private val processing = Mutex()
+    private val progressScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    @Volatile private var lastProgressDbWrite = 0L
     private val cancelRequested = ConcurrentHashMap.newKeySet<Long>()
 
     val tasks: Flow<List<DownloadTaskEntity>> = dao.observeAll()
@@ -194,7 +197,11 @@ class DownloadManager(
             outputDir = taskDir.absolutePath,
             format = initial.format,
             progress = { _, downloaded, total, speed, eta ->
-                kotlinx.coroutines.runBlocking {
+                // Never block the Python callback thread — fire async and coalesce updates.
+                progressScope.launch {
+                    val now = System.currentTimeMillis()
+                    if (now - lastProgressDbWrite < 200 && total > 0) return@launch
+                    lastProgressDbWrite = now
                     val fraction = if (total > 0) downloaded.toFloat() / total.toFloat() else 0f
                     dao.setProgress(taskId, fraction.coerceIn(0f, 1f), downloaded, total, speed, eta)
                     dao.byId(taskId)?.let(onProgress)

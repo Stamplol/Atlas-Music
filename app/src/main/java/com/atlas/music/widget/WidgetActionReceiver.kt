@@ -44,14 +44,8 @@ class WidgetActionReceiver : BroadcastReceiver() {
                 runCatching { ServiceLocator.playbackConnection.cycleRepeatMode() }
             }
             ACTION_LIKE -> {
-                val conn = ServiceLocator.playbackConnection
-                val id = conn.state.value.currentTrackId
-                if (id != null) {
-                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO).launch {
-                        val track = ServiceLocator.musicRepository.getTrack(id)
-                        if (track != null) ServiceLocator.musicRepository.setFavorite(id, !track.isFavorite)
-                    }
-                }
+                // Single writer: service handles it, flips DB + updates notification + refreshes widgets.
+                runCatching { ServiceLocator.playbackConnection.toggleFavoriteCurrent() }
             }
             else -> return
         }

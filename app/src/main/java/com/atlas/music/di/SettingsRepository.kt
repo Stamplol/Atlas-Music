@@ -1,6 +1,8 @@
 package com.atlas.music.di
 
 import android.content.Context
+import android.content.Intent
+
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
@@ -60,6 +62,8 @@ class SettingsRepository(private val context: Context) {
         val QUEUE_HINT = stringPreferencesKey(AtlasKeys.QUEUE_TITLE_HINT)
         val YTDLP_NOTICE = stringPreferencesKey(AtlasKeys.YTDLP_UPDATE_NOTICE)
         val LAST_SCAN = longPreferencesKey(AtlasKeys.LAST_SCAN_MS)
+        val SLEEP_END_AT = longPreferencesKey("sleep_timer_end_at")
+        val SLEEP_END_OF_TRACK = booleanPreferencesKey("sleep_timer_end_of_track")
     }
 
     val settings: Flow<AtlasSettings> = store.data.map { p ->
@@ -92,6 +96,7 @@ class SettingsRepository(private val context: Context) {
             backgroundTrail = (p[K.BG_TRAIL] ?: 72).coerceIn(1, 95),
             backgroundReact = p[K.BG_REACT] ?: true,
             sortAlgo = p[K.SORT_ALGO] ?: "random",
+            sleepTimerEndOfTrack = p[K.SLEEP_END_OF_TRACK] ?: false,
             pomodoroFocusMinutes = (p[K.POMODORO_FOCUS] ?: 25).coerceIn(5, 180),
             pomodoroBreakMinutes = (p[K.POMODORO_BREAK] ?: 5).coerceIn(1, 60),
             pomodoroSyncPlayback = p[K.POMODORO_SYNC] ?: true,
@@ -111,11 +116,23 @@ class SettingsRepository(private val context: Context) {
     suspend fun setPlaybackSpeed(speed: Float) = store.edit { it[K.SPEED] = speed.coerceIn(0.5f, 2.0f) }
     suspend fun setSleepTimerDefault(minutes: Int) = store.edit { it[K.SLEEP_MIN] = minutes.coerceIn(5, 180) }
     suspend fun setExcludedFolders(folders: Set<String>) = store.edit { it[K.EXCLUDED] = folders }
-    suspend fun setMusicFolder(uri: String, name: String) = store.edit { it[K.MUSIC_FOLDER_URI] = uri; it[K.MUSIC_FOLDER_NAME] = name }
-    suspend fun clearMusicFolder() = store.edit { it.remove(K.MUSIC_FOLDER_URI); it.remove(K.MUSIC_FOLDER_NAME) }
+    suspend fun setMusicFolder(uri: String, name: String) {
+        val old = store.data.first()[K.MUSIC_FOLDER_URI]
+        if (old != null && old != uri) releasePersistableUriPermission(old)
+        store.edit { it[K.MUSIC_FOLDER_URI] = uri; it[K.MUSIC_FOLDER_NAME] = name }
+    }
+    suspend fun clearMusicFolder() {
+        val old = store.data.first()[K.MUSIC_FOLDER_URI]
+        store.edit { it.remove(K.MUSIC_FOLDER_URI); it.remove(K.MUSIC_FOLDER_NAME) }
+        releasePersistableUriPermission(old)
+    }
     suspend fun setMusicFolderOnly(enabled: Boolean) = store.edit { it[K.MUSIC_FOLDER_ONLY] = enabled }
     suspend fun setDownloadFormat(format: String) = store.edit { it[K.DL_FORMAT] = format }
-    suspend fun setDownloadDestinationUri(uri: String) = store.edit { it[K.DL_DEST] = uri }
+    suspend fun setDownloadDestinationUri(uri: String) {
+        val old = store.data.first()[K.DL_DEST]
+        if (old != null && old != uri) releasePersistableUriPermission(old)
+        store.edit { it[K.DL_DEST] = uri }
+    }
     suspend fun setAutoImportDownloads(enabled: Boolean) = store.edit { it[K.AUTO_IMPORT] = enabled }
     suspend fun setAutoCheckYtdlp(enabled: Boolean) = store.edit { it[K.AUTO_YTDLP] = enabled }
     suspend fun setDiagnostics(enabled: Boolean) = store.edit { it[K.DIAGNOSTICS] = enabled }
@@ -168,5 +185,21 @@ class SettingsRepository(private val context: Context) {
     suspend fun ytdlpUpdateNotice(): String? = store.data.first()[K.YTDLP_NOTICE]
 
     suspend fun setLastScanMs(ms: Long) = store.edit { it[K.LAST_SCAN] = ms }
+
+    suspend fun saveSleepTimerEndAt(endAt: Long) = store.edit { it[K.SLEEP_END_AT] = endAt }
+    suspend fun clearSleepTimerSaved() = store.edit { it.remove(K.SLEEP_END_AT) }
+    suspend fun sleepTimerSaved(): Long = store.data.first()[K.SLEEP_END_AT] ?: 0L
+    suspend fun setSleepTimerEndOfTrack(enabled: Boolean) = store.edit { it[K.SLEEP_END_OF_TRACK] = enabled }
+
+
+    suspend fun releasePersistableUriPermission(uriString: String?) {
+        if (uriString.isNullOrBlank()) return
+        runCatching {
+            context.contentResolver.releasePersistableUriPermission(
+                android.net.Uri.parse(uriString),
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+            )
+        }.onFailure { android.util.Log.w("AtlasSettings", "releasePersistableUriPermission failed", it) }
+    }
     val lastScanMs: Flow<Long> = store.data.map { it[K.LAST_SCAN] ?: 0L }
 }

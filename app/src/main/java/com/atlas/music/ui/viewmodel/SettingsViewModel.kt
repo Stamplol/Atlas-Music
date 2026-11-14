@@ -50,6 +50,7 @@ class SettingsViewModel : ViewModel() {
     fun setMusicFolder(uri: String, name: String) = launch { settingsRepo.setMusicFolder(uri, name) }
     fun clearMusicFolder() = launch { settingsRepo.clearMusicFolder() }
     fun setMusicFolderOnly(enabled: Boolean) = launch { settingsRepo.setMusicFolderOnly(enabled) }
+    fun setSleepTimerEndOfTrack(enabled: Boolean) = launch { settingsRepo.setSleepTimerEndOfTrack(enabled) }
 
     fun addExcludedFolder(folder: String) = launch {
         val current = settings.value.excludedFolders

@@ -13,7 +13,8 @@ import kotlinx.coroutines.flow.first
 
 class StatsWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
-        ids.forEach { updateWidget(context, manager, it) }
+        // DB reads on IO — main thread stays free for the homescreen.
+        updateAll(context)
     }
     companion object {
         private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
@@ -41,10 +42,25 @@ class StatsWidgetProvider : AppWidgetProvider() {
                 val sessions = runBlockingSuspend { ServiceLocator.database.pomodoroDao().observeAll().first() }
                 minutes = sessions.filter { it.startedAtMs >= todayStart && it.kind == "FOCUS" && it.completed }.sumOf { it.durationMinutes }
             } catch (e: Exception) {}
+            val streak = runBlockingSuspend {
+                val focus = ServiceLocator.database.pomodoroDao().observeAll().first()
+                    .filter { it.kind == "FOCUS" && it.completed }
+                if (focus.isEmpty()) return@runBlockingSuspend 0
+                val days = focus.map { row ->
+                    val cal = java.util.Calendar.getInstance(); cal.timeInMillis = row.startedAtMs
+                    listOf(cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.DAY_OF_YEAR))
+                }.toSet()
+                val cal = java.util.Calendar.getInstance()
+                fun key() = listOf(cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.DAY_OF_YEAR))
+                if (key() !in days) { cal.add(java.util.Calendar.DAY_OF_YEAR, -1); if (key() !in days) return@runBlockingSuspend 0 }
+                var n = 0
+                while (key() in days) { n++; cal.add(java.util.Calendar.DAY_OF_YEAR, -1) }
+                n
+            }
             views.setTextViewText(R.id.stats_tracks, tracks.toString())
             views.setTextViewText(R.id.stats_hours, "${hours}h")
             views.setTextViewText(R.id.stats_minutes, "${minutes}m")
-            views.setTextViewText(R.id.stats_streak, "Atlas")
+            views.setTextViewText(R.id.stats_streak, "${streak}d")
             val open = android.app.PendingIntent.getActivity(context, 0, Intent(context, com.atlas.music.MainActivity::class.java), android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
             views.setOnClickPendingIntent(R.id.stats_root, open)
             return views

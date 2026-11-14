@@ -21,6 +21,9 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE id IN (:ids)")
     suspend fun byIds(ids: List<Long>): List<TrackEntity>
 
+    @Query("SELECT isFavorite FROM tracks WHERE id = :id")
+    fun observeFavorite(id: Long): kotlinx.coroutines.flow.Flow<Boolean?>
+
     @Query("SELECT * FROM tracks WHERE isFavorite = 1 ORDER BY title COLLATE NOCASE")
     fun observeFavorites(): Flow<List<TrackEntity>>
 
@@ -97,7 +100,7 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE fingerprint = :fingerprint ORDER BY dateAddedSec")
     suspend fun tracksWithFingerprint(fingerprint: String): List<TrackEntity>
 
-    @Insert(onConflict = OnConflictStrategy.ABORT)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(tracks: List<TrackEntity>): List<Long>
 
     @Update
@@ -117,6 +120,9 @@ interface TrackDao {
 
     @Query("SELECT * FROM tracks WHERE title LIKE '%' || :q || '%' COLLATE NOCASE OR artist LIKE '%' || :q || '%' COLLATE NOCASE OR album LIKE '%' || :q || '%' COLLATE NOCASE OR genre LIKE '%' || :q || '%' COLLATE NOCASE OR folder LIKE '%' || :q || '%' COLLATE NOCASE LIMIT :limit")
     suspend fun searchTracks(q: String, limit: Int): List<TrackEntity>
+
+    @Query("SELECT COUNT(*) FROM tracks WHERE artist = 'Unknown artist' OR album = 'Unknown album'")
+    suspend fun unknownCount(): Int
 
     @Query("SELECT * FROM tracks WHERE uri = :uri")
     suspend fun byUri(uri: String): TrackEntity?
@@ -175,6 +181,9 @@ interface PlayEventDao {
 
     @Query("DELETE FROM play_events")
     suspend fun clearAll()
+
+    @Query("DELETE FROM play_events WHERE trackId = :trackId")
+    suspend fun deleteForTrack(trackId: Long)
 
     @Query("SELECT COUNT(*) FROM play_events")
     fun observeCount(): Flow<Int>

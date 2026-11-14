@@ -163,6 +163,10 @@ class MusicRepository(private val context: Context, private val db: AtlasDatabas
                 android.util.Log.e(TAG, "MediaStore query failed", e)
                 throw e
             }
+            if (cursor == null && !useCustomOnly) {
+                // Never treat a failed MediaStore as "everything was deleted".
+                throw IllegalStateException("MediaStore is unavailable — scan aborted, nothing removed.")
+            }
             android.util.Log.i(TAG, "MediaStore cursor = ${cursor?.count ?: "null"} rows")
             cursor?.use { c ->
                 val idIdx = c.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
@@ -275,20 +279,29 @@ class MusicRepository(private val context: Context, private val db: AtlasDatabas
             // Guard: if the custom folder scan failed (permission lost), keep the library intact.
             val dbUris = trackDao.allUris()
             // Delete rows whose URI was not seen in this scan at all (file removed or excluded).
-            val removedUris = if (customScanFailed) {
-                android.util.Log.w(TAG, "skipping removals: custom folder scan failed")
+            val removedUris = if (customScanFailed || useCustomOnly) {
+                android.util.Log.w(TAG, "skipping removals: custom folder scope (or scan failure) — keeping library intact")
                 emptyList()
             } else {
                 dbUris.filter { it !in seenUris }
             }
             if (removedUris.isNotEmpty()) {
                 for (uri in removedUris) {
-                    trackDao.byUri(uri)?.let { trackDao.delete(it.id) }
+                    trackDao.byUri(uri)?.let { track ->
+                        deleteTrackInternal(track.id)
+                    }
                 }
             }
             android.util.Log.i(TAG, "scan finished: +$added new, ~$updated updated, -${removedUris.size} removed, $skipped excluded")
             ScanResult(added, updated, removedUris.size, skipped, System.currentTimeMillis() - started)
         }
+
+    /** Full removal: row + playlist memberships + play events. */
+    private suspend fun deleteTrackInternal(trackId: Long) {
+        db.playlistDao().removeTrackEverywhere(trackId)
+        db.playEventDao().deleteForTrack(trackId)
+        trackDao.delete(trackId)
+    }
 
     /**
      * Walk a SAF tree (user-picked music folder) recursively and create/refresh TrackEntities.
@@ -471,6 +484,8 @@ class MusicRepository(private val context: Context, private val db: AtlasDatabas
 
     suspend fun recordPlay(trackId: Long) = db.playEventDao().insert(com.atlas.music.data.db.PlayEventEntity(trackId = trackId))
 
+    fun observeFavorite(id: Long) = trackDao.observeFavorite(id)
+    suspend fun unknownCount(): Int = trackDao.unknownCount()
     suspend fun getTrack(id: Long): TrackEntity? = trackDao.byId(id)
     suspend fun getTracks(ids: List<Long>): List<TrackEntity> = trackDao.byIds(ids)
 

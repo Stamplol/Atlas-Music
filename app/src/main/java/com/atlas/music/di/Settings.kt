@@ -36,6 +36,7 @@ data class AtlasSettings(
     val pomodoroFocusMinutes: Int = 25,
     val pomodoroBreakMinutes: Int = 5,
     val pomodoroSyncPlayback: Boolean = true,
+    val sleepTimerEndOfTrack: Boolean = false,
 )
 
 object AtlasKeys {

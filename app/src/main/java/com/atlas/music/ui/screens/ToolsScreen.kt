@@ -75,6 +75,7 @@ import com.atlas.music.ui.viewmodel.ToolsViewModel
 import com.atlas.music.util.AudioOutput
 import com.atlas.music.util.Format
 import com.atlas.music.util.OutputKind
+import com.atlas.music.di.ServiceLocator
 import com.atlas.music.util.isLandscape
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -226,7 +227,13 @@ private fun PlayerHeaderCard(
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
-                IconButton(onClick = { uiScope.launch { viewModel.toggleFavoriteCurrent() } }) { Icon(if (false) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, contentDescription = "Favorite") }
+                val favFlow = remember(state.playerState.currentTrackId) {
+                    state.playerState.currentTrackId?.let { ServiceLocator.musicRepository.observeFavorite(it) } ?: kotlinx.coroutines.flow.flowOf(false)
+                }
+                val fav by favFlow.collectAsState(initial = false)
+                IconButton(onClick = { viewModel.toggleFavoriteCurrent() }) {
+                    Icon(if (fav == true) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, contentDescription = "Favorite", tint = if (fav == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                }
                 IconButton(onClick = onOpenQueue) { Icon(Icons.Filled.QueueMusic, contentDescription = "Queue") }
                 TextButton(onClick = onShowOutputPicker) { Text(outputLabel, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 TextButton(onClick = onOpenNowPlaying) { Text("Open player") }
@@ -289,6 +296,11 @@ private fun TimerSection(state: com.atlas.music.ui.viewmodel.ToolsUiState, viewM
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(10, 20, 30, 60).forEach { m -> FilterChip(selected = false, onClick = { viewModel.startSleepTimer(m) }, label = { Text("$m min") }) }
                     if (rem != null && rem > 0) TextButton(onClick = viewModel::clearSleepTimer) { Text("Cancel") }
+                }
+                Spacer(Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("End of track", modifier = Modifier.weight(1f))
+                    Switch(checked = state.settings.sleepTimerEndOfTrack, onCheckedChange = viewModel::setSleepTimerEndOfTrack)
                 }
             }
         }
@@ -371,15 +383,18 @@ private fun ToolsLandscapeDashboard(
     onOpenDownloads: () -> Unit,
     onExit: () -> Unit,
 ) {
+    val clockTickState = remember { androidx.compose.runtime.mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) { while (true) { clockTickState.longValue = System.currentTimeMillis(); kotlinx.coroutines.delay(1000) } }
+    val clockTick = clockTickState.longValue
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onExit) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") }
                 Text("Atlas Tools — table", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.weight(1f))
-                Text(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
+                Text(SimpleDateFormat("HH:mm", Locale.getDefault()).format(remember(clockTick) { Date() }), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(8.dp))
-                Text(SimpleDateFormat("EEE, MMM d", Locale.getDefault()).format(Date()), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                Text(SimpleDateFormat("EEE, MMM d", Locale.getDefault()).format(remember(clockTick) { Date() }), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(8.dp))
                 TextButton(onClick = onOpenNowPlaying) { Text("Player") }
                 TextButton(onClick = onOpenDownloads) { Text("Downloads") }

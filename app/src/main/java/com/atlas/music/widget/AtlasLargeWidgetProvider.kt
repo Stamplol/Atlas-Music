@@ -13,7 +13,8 @@ import kotlinx.coroutines.launch
 
 class AtlasLargeWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
-        ids.forEach { updateWidget(context, manager, it) }
+        // Build bitmap + RemoteViews on IO, not the main thread.
+        updateAll(context)
     }
     companion object {
         private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)

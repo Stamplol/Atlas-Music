@@ -118,6 +118,7 @@ fun NowPlayingScreen(
     onOpenInfo: () -> Unit,
     onSetSpeed: (Float) -> Unit,
     onSetOutputDevice: (Int?) -> Unit,
+    toolsVm: com.atlas.music.ui.viewmodel.ToolsViewModel,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -163,7 +164,6 @@ fun NowPlayingScreen(
         label = "artwork-settle",
     )
     val landscape = isLandscape()
-    val toolsVm: com.atlas.music.ui.viewmodel.ToolsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val toolsState by toolsVm.state.collectAsState()
     var showToolsPanel by remember { mutableStateOf(false) }
     val hasActiveTool = toolsState.running || sleepTimerEndAt != null

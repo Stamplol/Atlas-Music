@@ -123,6 +123,11 @@ class YtdlpUpdater(
                 UpdateResult.Failed("The update didn't pass a post-install check, so Atlas Music rolled back to the bundled yt-dlp ${installedVersion()}.")
             }
         } catch (e: Exception) {
+            // Best-effort cleanup: remove leftover staging dirs and cached wheels.
+            runCatching {
+                bridge.updatesRoot.listFiles()?.filter { it.isDirectory && it.name.endsWith(".staging") }?.forEach { it.deleteRecursively() }
+                appContext.cacheDir.listFiles()?.filter { it.name.startsWith("yt_dlp-") && it.name.endsWith(".whl") }?.forEach { it.delete() }
+            }
             UpdateResult.Failed(e.message?.take(300) ?: "Update failed for an unknown reason. Your current yt-dlp is unchanged.")
         }
     }

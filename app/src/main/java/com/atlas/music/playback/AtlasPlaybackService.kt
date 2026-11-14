@@ -46,6 +46,8 @@ class AtlasPlaybackService : MediaLibraryService() {
         val EffectsStatus = kotlinx.coroutines.flow.MutableStateFlow<Boolean?>(null)
 
         const val ACTION_SET_OUTPUT_DEVICE = "com.atlas.music.SET_OUTPUT_DEVICE"
+        const val ACTION_SET_FOCUS_VOLUME = "com.atlas.music.SET_FOCUS_VOLUME"
+        const val EXTRA_FOCUS_VOLUME = "focus_volume"
         const val ACTION_TOGGLE_FAVORITE = "com.atlas.music.TOGGLE_FAVORITE"
         const val EXTRA_DEVICE_ID = "device_id"
 
@@ -74,6 +76,7 @@ class AtlasPlaybackService : MediaLibraryService() {
     private var crossfadeJob: kotlinx.coroutines.Job? = null
     private var fadeState = FadeState.IDLE
     private enum class FadeState { IDLE, FADING_OUT, FADING_IN }
+    private var focusVolume = 1f
     private var latestSettings: com.atlas.music.di.AtlasSettings = com.atlas.music.di.AtlasSettings()
     private var settingsJob: kotlinx.coroutines.Job? = null
 
@@ -160,13 +163,13 @@ class AtlasPlaybackService : MediaLibraryService() {
         // Keep music playing when the app is swiped away if something is playing.
         val current = player
         if (current == null || !current.isPlaying) {
-            runCatching { scope.launch(kotlinx.coroutines.Dispatchers.IO) { saveQueueState() } }
+            runCatching { kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.IO) { kotlinx.coroutines.withTimeout(750) { saveQueueState() } } }
             super.onTaskRemoved(rootIntent)
         }
     }
 
     override fun onDestroy() {
-        runCatching { scope.launch(kotlinx.coroutines.Dispatchers.IO) { saveQueueState() } }
+        runCatching { kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.IO) { kotlinx.coroutines.withTimeout(750) { saveQueueState() } } }
         settingsJob?.cancel()
         crossfadeJob?.cancel()
         equalizer?.release(); bassBoost?.release(); loudness?.release()
@@ -292,6 +295,11 @@ class AtlasPlaybackService : MediaLibraryService() {
                 player?.setPreferredAudioDevice(device)
                 return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
             }
+            if (command.customAction == ACTION_SET_FOCUS_VOLUME) {
+                focusVolume = args.getFloat(EXTRA_FOCUS_VOLUME, 1f).coerceIn(0f, 1f)
+                player?.volume = effectiveVolume()
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
             if (command.customAction == ACTION_TOGGLE_FAVORITE) {
                 val currentId = player?.currentMediaItem?.mediaId?.toLongOrNull()
                 if (currentId != null) {
@@ -388,6 +396,8 @@ class AtlasPlaybackService : MediaLibraryService() {
             .firstOrNull { it.id == deviceId }
     }
 
+    private fun effectiveVolume(): Float = focusVolume.coerceIn(0f, 1f)
+
     // ---------- Equalizer / bass boost / loudness ----------
 
     private fun attachAudioEffects(exoPlayer: ExoPlayer, audioSessionId: Int) {
@@ -447,7 +457,7 @@ class AtlasPlaybackService : MediaLibraryService() {
                 delay(200)
                 val settings = latestSettings
                 if (!settings.crossfadeEnabled) {
-                    if (exoPlayer.volume != 1f) exoPlayer.volume = 1f
+                    if (exoPlayer.volume != effectiveVolume()) exoPlayer.volume = effectiveVolume()
                     fadeState = FadeState.IDLE
                     continue
                 }
@@ -457,12 +467,19 @@ class AtlasPlaybackService : MediaLibraryService() {
                 val atEnd = (exoPlayer.repeatMode != Player.REPEAT_MODE_ONE &&
                     exoPlayer.currentMediaItemIndex < exoPlayer.mediaItemCount - 1) ||
                     exoPlayer.repeatMode == Player.REPEAT_MODE_ALL
+                // Sleep timer “end of track”: if we are about to start the next track and the user
+                // asked to stop after this track, pause instead of rolling forward.
+                if (settings.sleepTimerEndOfTrack && !atEnd && exoPlayer.isPlaying && remaining in 1..500) {
+                    exoPlayer.pause()
+                    scope.launch { runCatching { ServiceLocator.settings.setSleepTimerEndOfTrack(false) } }
+                    continue
+                }
                 if (exoPlayer.isPlaying && remaining in 1..fadeMs && atEnd) {
                     fadeState = FadeState.FADING_OUT
                     val fraction = remaining.toFloat() / fadeMs.toFloat()
-                    exoPlayer.volume = fraction.coerceIn(0f, 1f)
+                    exoPlayer.volume = (fraction.coerceIn(0f, 1f) * effectiveVolume())
                 } else if (fadeState == FadeState.FADING_OUT && remaining > fadeMs) {
-                    exoPlayer.volume = 1f
+                    exoPlayer.volume = effectiveVolume()
                     fadeState = FadeState.IDLE
                 }
             }
@@ -473,7 +490,7 @@ class AtlasPlaybackService : MediaLibraryService() {
         scope.launch {
             val settings = latestSettings
             if (!settings.crossfadeEnabled) {
-                exoPlayer.volume = 1f
+                exoPlayer.volume = effectiveVolume()
                 return@launch
             }
             val fadeMs = settings.crossfadeSeconds * 1000L
@@ -483,7 +500,7 @@ class AtlasPlaybackService : MediaLibraryService() {
             for (i in 1..steps) {
                 delay(100)
                 if (fadeState != FadeState.FADING_IN) return@launch
-                exoPlayer.volume = (i.toFloat() / steps).coerceIn(0f, 1f)
+                exoPlayer.volume = (i.toFloat() / steps).coerceIn(0f, 1f) * effectiveVolume()
             }
             fadeState = FadeState.IDLE
         }
@@ -512,6 +529,10 @@ class AtlasPlaybackService : MediaLibraryService() {
         val items = saved.ids.mapNotNull { id -> trackIndex[id]?.let(MediaItemFactory::fromTrack) }
         if (items.isEmpty()) return
         exoPlayer.setMediaItems(items, saved.index.coerceIn(0, items.lastIndex), saved.positionMs)
+        // Seed notification heart state from restored track
+        val restoredId = saved.ids.getOrNull(saved.index.coerceIn(0, saved.ids.lastIndex))
+        AtlasNotificationState.trackId = restoredId ?: -1L
+        AtlasNotificationState.isFavorite = restoredId?.let { trackIndex[it]?.isFavorite } ?: false
         exoPlayer.prepare()
         exoPlayer.pause() // restoration never autoplays
     }

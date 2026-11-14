@@ -91,8 +91,7 @@ class ToolsViewModel : ViewModel() {
         }
         viewModelScope.launch {
             while (true) {
-                val all = runCatching { ServiceLocator.musicRepository.observeAll(com.atlas.music.util.SortOption.TITLE).first() }.getOrNull() ?: emptyList()
-                val unknown = all.count { it.artist == "Unknown artist" || it.album == "Unknown album" }
+                val unknown = runCatching { ServiceLocator.musicRepository.unknownCount() }.getOrDefault(0)
                 _state.value = _state.value.copy(unknownArtistCount = unknown)
                 kotlinx.coroutines.delay(15_000)
             }
@@ -118,6 +117,7 @@ class ToolsViewModel : ViewModel() {
     fun setFocusMinutes(minutes: Int) = viewModelScope.launch { settingsRepo.setPomodoroFocus(minutes) }
     fun setBreakMinutes(minutes: Int) = viewModelScope.launch { settingsRepo.setPomodoroBreak(minutes) }
     fun setSyncPlayback(enabled: Boolean) = viewModelScope.launch { settingsRepo.setPomodoroSync(enabled) }
+    fun setSleepTimerEndOfTrack(enabled: Boolean) = viewModelScope.launch { settingsRepo.setSleepTimerEndOfTrack(enabled) }
 
     fun startPomodoro() {
         val s = _state.value.settings
@@ -134,12 +134,14 @@ class ToolsViewModel : ViewModel() {
         if (!_state.value.running) return
         pausedRemainingMs = max(0L, endAtMs - System.currentTimeMillis())
         _state.value = _state.value.copy(running = false, remainingMs = pausedRemainingMs)
+        persistWidgetTimer(0L, _state.value.pomodoroMode)
     }
 
     fun resumePomodoro() {
         if (_state.value.running) return
         endAtMs = System.currentTimeMillis() + pausedRemainingMs
         _state.value = _state.value.copy(running = true)
+        persistWidgetTimer(endAtMs, _state.value.pomodoroMode)
     }
 
     fun resetPomodoro() {
@@ -252,11 +254,7 @@ class ToolsViewModel : ViewModel() {
         viewModelScope.launch { ServiceLocator.settings.setPlaybackSpeed(speed) }
     }
     fun setPreferredOutput(deviceId: Int?) = ServiceLocator.playbackConnection.setPreferredOutputDevice(deviceId)
-    suspend fun toggleFavoriteCurrent() {
-        val id = ServiceLocator.playbackConnection.state.value.currentTrackId ?: return
-        val track = ServiceLocator.musicRepository.getTrack(id) ?: return
-        ServiceLocator.musicRepository.setFavorite(id, !track.isFavorite)
-    }
+    fun toggleFavoriteCurrent() = ServiceLocator.playbackConnection.toggleFavoriteCurrent()
 
     // ---- Unknowns fixer (batch) ----
     fun fixUnknowns(artist: String, album: String) {

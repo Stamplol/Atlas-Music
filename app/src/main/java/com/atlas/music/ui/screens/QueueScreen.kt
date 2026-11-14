@@ -75,7 +75,7 @@ fun QueueScreen(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
         )
         LazyColumn(contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 120.dp)) {
-            itemsIndexed(tracks, key = { index, track -> "$index-${track.id}" }) { index, track ->
+            itemsIndexed(tracks, key = { _, track -> track.id }) { index, track ->
                 val isCurrent = track.id == currentTrackId
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),

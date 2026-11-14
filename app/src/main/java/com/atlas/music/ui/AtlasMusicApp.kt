@@ -118,7 +118,11 @@ fun AtlasMusicApp() {
     val currentRoute = backStackEntry?.destination?.route?.substringBefore('/') ?: "home"
 
     val playerVm: PlayerViewModel = viewModel()
+    val toolsVm: com.atlas.music.ui.viewmodel.ToolsViewModel = viewModel()
     val playerState by playerVm.state.collectAsState()
+    LaunchedEffect(playerState.lastError) {
+        playerState.lastError?.let { snackbar.showSnackbar(it) }
+    }
     val sleepTimerEndAt by playerVm.sleepTimerEndAt.collectAsState()
 
     // Shared track actions
@@ -283,7 +287,6 @@ fun AtlasMusicApp() {
             }
 
             composable("tools", enterTransition = { fadeIn(tween(210)) }, exitTransition = { fadeOut(tween(90)) }, popEnterTransition = { fadeIn(tween(210)) }, popExitTransition = { fadeOut(tween(90)) }) {
-                val toolsVm: ToolsViewModel = viewModel()
                 ToolsScreen(
                     viewModel = toolsVm,
                     onExit = { navController.navigate("home") { popUpTo("home") { inclusive = false }; launchSingleTop = true } },
@@ -328,9 +331,12 @@ fun AtlasMusicApp() {
             }
 
             composable("nowplaying", enterTransition = { fadeIn(tween(280)) + slideInVertically(animationSpec = tween(280)) }, exitTransition = { fadeOut(tween(90)) }, popEnterTransition = { fadeIn(tween(300)) }, popExitTransition = { fadeOut(tween(90)) + slideOutVertically(animationSpec = tween(200)) }) {
-                val favoriteTracks by ServiceLocator.musicRepository.observeFavorites().collectAsState(initial = emptyList())
                 val trackId = playerState.currentTrackId
-                val isFavorite = favoriteTracks.any { it.id == trackId }
+                val favoriteFlow = remember(trackId) {
+                    trackId?.let { ServiceLocator.musicRepository.observeFavorite(it) } ?: kotlinx.coroutines.flow.flowOf(false)
+                }
+                val isFavoriteState by favoriteFlow.collectAsState(initial = false)
+                val isFavorite = isFavoriteState == true
                 var currentTrack by remember(trackId) { mutableStateOf<TrackEntity?>(null) }
                 LaunchedEffect(trackId) {
                     currentTrack = trackId?.let { ServiceLocator.musicRepository.getTrack(it) }
@@ -348,11 +354,7 @@ fun AtlasMusicApp() {
                     onToggleShuffle = playerVm::toggleShuffle,
                     onCycleRepeatMode = playerVm::cycleRepeatMode,
                     onToggleFavorite = {
-                        scope.launch {
-                            val id = playerState.currentTrackId ?: return@launch
-                            val track = ServiceLocator.musicRepository.getTrack(id) ?: return@launch
-                            TrackActions.toggleFavorite(track)
-                        }
+                        ServiceLocator.playbackConnection.toggleFavoriteCurrent()
                     },
                     onStartSleepTimer = playerVm::startSleepTimer,
                     onClearSleepTimer = playerVm::clearSleepTimer,
@@ -360,6 +362,7 @@ fun AtlasMusicApp() {
                     onOpenInfo = { playerState.currentTrackId?.let { navController.navigate("trackinfo/$it") } },
                     onSetSpeed = playerVm::setPlaybackSpeed,
                     onSetOutputDevice = { deviceId -> ServiceLocator.playbackConnection.setPreferredOutputDevice(deviceId) },
+                    toolsVm = toolsVm,
                 )
             }
 

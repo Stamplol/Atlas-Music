@@ -68,6 +68,10 @@ class AtlasNotificationProvider(context: Context) : DefaultMediaNotificationProv
     ): ImmutableList<CommandButton> {
         val builder = ImmutableList.Builder<CommandButton>()
         val player = session.player
+        val itemCount = runCatching { player.mediaItemCount }.getOrDefault(1)
+        val index = runCatching { player.currentMediaItemIndex }.getOrDefault(0)
+        val hasNext = itemCount > 1 && index < itemCount - 1
+        val hasPrev = itemCount > 1 && index > 0
         val isFavorite = runCatching {
             val id = player.currentMediaItem?.mediaId?.toLongOrNull()
             AtlasNotificationState.isFavorite
@@ -80,7 +84,7 @@ class AtlasNotificationProvider(context: Context) : DefaultMediaNotificationProv
             putInt(DefaultMediaNotificationProvider.COMMAND_KEY_COMPACT_VIEW_INDEX, C.INDEX_UNSET)
         }
 
-        if (playerCommands.containsAny(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM, Player.COMMAND_SEEK_TO_PREVIOUS)) {
+        if (hasPrev && playerCommands.containsAny(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM, Player.COMMAND_SEEK_TO_PREVIOUS)) {
             builder.add(
                 CommandButton.Builder()
                     .setPlayerCommand(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
@@ -103,13 +107,13 @@ class AtlasNotificationProvider(context: Context) : DefaultMediaNotificationProv
                     .build()
             )
         }
-        if (playerCommands.containsAny(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM, Player.COMMAND_SEEK_TO_NEXT)) {
+        if (hasNext && playerCommands.containsAny(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM, Player.COMMAND_SEEK_TO_NEXT)) {
             builder.add(
                 CommandButton.Builder()
                     .setPlayerCommand(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
                     .setIconResId(androidx.media3.ui.R.drawable.exo_icon_next)
                     .setDisplayName("Next")
-                    .setExtras(compactExtras(2))
+                    .setExtras(compactExtras(1))
                     .build()
             )
         }

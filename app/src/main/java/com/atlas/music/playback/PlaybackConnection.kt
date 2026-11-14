@@ -11,11 +11,13 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.atlas.music.data.db.TrackEntity
+import com.atlas.music.di.ServiceLocator
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,6 +38,7 @@ data class PlayerUiState(
     val shuffleEnabled: Boolean = false,
     val playbackSpeed: Float = 1f,
     val hasQueue: Boolean = false,
+    val lastError: String? = null,
 )
 
 /**
@@ -82,6 +85,7 @@ class PlaybackConnection(private val context: Context) {
                     _state.value = _state.value.copy(connected = true)
                     syncFromPlayer()
                     maybeFireSleepTimer()
+                    restorePersistedSleepTimer()
                     pendingPlay?.let { (tracks, idx) ->
                         pendingPlay = null
                         playTracksInternal(tracks, idx)
@@ -105,7 +109,7 @@ class PlaybackConnection(private val context: Context) {
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) = syncFromPlayer()
         override fun onIsPlayingChanged(isPlaying: Boolean) = syncFromPlayer()
-        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = syncFromPlayer()
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) { syncFromPlayer(); _state.value = _state.value.copy(lastError = null) }
         override fun onRepeatModeChanged(repeatMode: Int) = syncFromPlayer()
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = syncFromPlayer()
         override fun onPlaybackParametersChanged(playbackParameters: androidx.media3.common.PlaybackParameters) = syncFromPlayer()
@@ -191,7 +195,11 @@ class PlaybackConnection(private val context: Context) {
 
     /** Pomodoro focus duck: lower music while focusing, restore on break. */
     fun setFocusVolume(volume: Float) {
-        controller?.volume = volume.coerceIn(0f, 1f)
+        val ctrl = controller
+        if (ctrl == null) { connect(); return }
+        val command = SessionCommand(AtlasPlaybackService.ACTION_SET_FOCUS_VOLUME, Bundle.EMPTY)
+        val args = Bundle().apply { putFloat(AtlasPlaybackService.EXTRA_FOCUS_VOLUME, volume.coerceIn(0f, 1f)) }
+        ctrl.sendCustomCommand(command, args)
     }
 
     fun setPlaybackSpeed(speed: Float) {
@@ -213,6 +221,7 @@ class PlaybackConnection(private val context: Context) {
         if (tracks.isEmpty()) return
         val items = MediaItemFactory.fromTracks(tracks)
         ctrl.setMediaItems(items, startIndex.coerceIn(0, items.lastIndex), 0L)
+        _state.value = _state.value.copy(lastError = null)
         ctrl.play()
     }
 
@@ -243,6 +252,7 @@ class PlaybackConnection(private val context: Context) {
 
     fun clearQueue() {
         controller?.clearMediaItems()
+        scope.launch { runCatching { ServiceLocator.settings.clearSavedQueue() } }
     }
 
     fun queueTrackIds(): List<Long> {
@@ -274,12 +284,30 @@ class PlaybackConnection(private val context: Context) {
         ctrl.play()
     }
 
+    private fun restorePersistedSleepTimer() {
+        scope.launch {
+            val saved = runCatching { ServiceLocator.settings.sleepTimerSaved() }.getOrDefault(0L)
+            if (saved > System.currentTimeMillis()) _sleepTimerEndAt.value = saved
+            else if (saved > 0) ServiceLocator.settings.clearSleepTimerSaved()
+        }
+    }
+
+    fun toggleFavoriteCurrent() {
+        val ctrl = controller
+        if (ctrl == null) { connect(); return }
+        val command = SessionCommand(AtlasPlaybackService.ACTION_TOGGLE_FAVORITE, Bundle.EMPTY)
+        ctrl.sendCustomCommand(command, Bundle.EMPTY)
+    }
+
     fun startSleepTimer(minutes: Int) {
         _sleepTimerEndAt.value = System.currentTimeMillis() + minutes * 60_000L
+        val end = _sleepTimerEndAt.value
+        scope.launch { end?.let { runCatching { ServiceLocator.settings.saveSleepTimerEndAt(it) } } }
     }
 
     fun clearSleepTimer() {
         _sleepTimerEndAt.value = null
+        scope.launch { runCatching { ServiceLocator.settings.clearSleepTimerSaved() } }
     }
 
     private fun maybeFireSleepTimer() {
@@ -287,6 +315,7 @@ class PlaybackConnection(private val context: Context) {
         if (System.currentTimeMillis() >= end) {
             controller?.pause()
             _sleepTimerEndAt.value = null
+            scope.launch { runCatching { ServiceLocator.settings.clearSleepTimerSaved() } }
         }
     }
 }
