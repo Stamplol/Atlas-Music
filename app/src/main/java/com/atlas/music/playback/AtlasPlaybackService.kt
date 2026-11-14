@@ -528,9 +528,15 @@ class AtlasPlaybackService : MediaLibraryService() {
         val trackIndex = tracks.associateBy { it.id }
         val items = saved.ids.mapNotNull { id -> trackIndex[id]?.let(MediaItemFactory::fromTrack) }
         if (items.isEmpty()) return
-        exoPlayer.setMediaItems(items, saved.index.coerceIn(0, items.lastIndex), saved.positionMs)
+        val restoredIndex = saved.index.coerceIn(0, items.lastIndex)
+        val restoredTrackId = saved.ids.getOrNull(restoredIndex)
+        // Clamp saved position into the restored track: a position saved at/past the end of a
+        // short sample (or after a crash at 00:00) yields a dead restore that never plays.
+        val restoredDuration = restoredTrackId?.let { trackIndex[it]?.durationMs ?: 0L } ?: 0L
+        val safePosition = if (restoredDuration > 0) saved.positionMs.coerceIn(0L, restoredDuration - 500L) else 0L
+        exoPlayer.setMediaItems(items, restoredIndex, safePosition)
         // Seed notification heart state from restored track
-        val restoredId = saved.ids.getOrNull(saved.index.coerceIn(0, saved.ids.lastIndex))
+        val restoredId = saved.ids.getOrNull(restoredIndex)
         AtlasNotificationState.trackId = restoredId ?: -1L
         AtlasNotificationState.isFavorite = restoredId?.let { trackIndex[it]?.isFavorite } ?: false
         exoPlayer.prepare()
