@@ -94,7 +94,7 @@ def fetch_info(url, format_preference="best"):
             "skip_download": True,
             "nocheckcertificate": False,
             "socket_timeout": 20,
-            "extract_flat": False,
+            "extract_flat": "in_playlist",
         }
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -150,20 +150,43 @@ def download(url, out_dir, format_pref, progress_callback=None, cancel_check=Non
         else:
             fmt = "bestaudio/best"
         os.makedirs(out_dir, exist_ok=True)
+        # AuraFetch robustness: skip private/deleted instead of aborting, keep going
+        # on partial fragments, tolerate windows-unsafe titles.
         opts = {
             "format": fmt,
             "outtmpl": os.path.join(out_dir, "%(title).120s [%(id)s].%(ext)s"),
             "quiet": True,
             "no_warnings": True,
             "noplaylist": True,
+            "ignoreerrors": True,
+            "ignore_no_formats_error": True,
+            "skip_unavailable_fragments": True,
+            "windowsfilenames": True,
+            "concurrent_fragment_downloads": 4,
+            "http_chunk_size": 10 * 1024 * 1024,
             "socket_timeout": 30,
-            "retries": 3,
+            "retries": 10,
+            "fragment_retries": 10,
             "progress_hooks": [hook],
             "overwrites": False,
             "continuedl": True,
         }
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=True)
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+        except Exception as first_exc:
+            msg = (str(first_exc) or "").lower()
+            cancelled = "cancelled by user" in msg
+            if cancelled:
+                raise
+            if "requested format is not available" in msg or "format is not available" in msg:
+                # AuraFetch-style second chance: the specific format chain died, fall back wholesale.
+                opts_fb = dict(opts)
+                opts_fb["format"] = "bestaudio/best"
+                with yt_dlp.YoutubeDL(opts_fb) as ydl:
+                    info = ydl.extract_info(url, download=True)
+            else:
+                raise
         if not info:
             return json.dumps({"ok": False, "error": "Download returned no media."})
         # Resolve the filename that yt-dlp actually wrote.
@@ -183,6 +206,57 @@ def download(url, out_dir, format_pref, progress_callback=None, cancel_check=Non
         cancelled = "Cancelled by user" in message
         return json.dumps({"ok": False, "cancelled": cancelled, "error": message[:400]})
 
+
+def list_playlist_entries(url):
+    """List videos in a YouTube playlist (flat). Never downloads media.
+
+    Returns JSON {ok, count, title, uploader, entries:[{id,title,duration,thumbnail}]}.
+    Private/deleted placeholders are skipped, matching AuraFetch's batch logic.
+    """
+    try:
+        yt_dlp = _import_ytdlp()
+        skip_titles = {"[private video]", "[deleted video]", "private video", "deleted video"}
+        opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "extract_flat": True,
+            "ignoreerrors": True,
+            "socket_timeout": 15,
+            "retries": 2,
+        }
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+        if not info:
+            return json.dumps({"ok": False, "error": "Playlist appears empty or unavailable."})
+        if "entries" not in info:
+            # Single video — treat as list of one so the caller can always batch-upgrade
+            entries = [{"id": info.get("id"), "title": info.get("title"), "url": info.get("webpage_url") or url,
+                        "duration": info.get("duration"), "thumbnail": info.get("thumbnail")}]
+            return json.dumps({"ok": True, "is_playlist": False, "count": 1,
+                               "title": info.get("title"), "uploader": info.get("uploader"),
+                               "entries": entries})
+        clean = []
+        for e in info.get("entries") or []:
+            if not e:
+                continue
+            if not (e.get("id") or e.get("url")):
+                continue
+            title = (e.get("title") or "").lower()
+            if title in skip_titles:
+                continue
+            entry_url = e.get("url") or e.get("webpage_url") or (f"https://www.youtube.com/watch?v={e.get('id')}" if e.get("id") else None)
+            if not entry_url:
+                continue
+            clean.append({"id": e.get("id"), "title": e.get("title") or "Unknown",
+                          "url": entry_url, "duration": e.get("duration"),
+                          "thumbnail": e.get("thumbnail")})
+        return json.dumps({"ok": True, "is_playlist": True, "count": len(clean),
+                           "title": info.get("title"), "uploader": info.get("uploader") or info.get("channel"),
+                           "entries": clean[:200]})
+    except Exception as exc:
+        message = str(exc) or "Couldn't read the playlist."
+        return json.dumps({"ok": False, "error": message[:400]})
 
 def sha256_file(path):
     try:

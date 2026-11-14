@@ -53,7 +53,13 @@ object UrlValidator {
         }
         if (path == "/watch" || path.startsWith("/watch")) {
             val id = queryParams["v"]
-            if (id != null && VIDEO_ID.matches(id)) return YoutubeLink(id, null, isPlaylist = false)
+            if (id != null && VIDEO_ID.matches(id)) {
+                val list = queryParams["list"]
+                val playlistId = if (list != null && PLAYLIST_ID.matches(list)) list else null
+                // Watch URLs stay single videos for playback/duplicate purposes; the playlistId
+                // rides along only so the UI can offer "download the whole playlist".
+                return YoutubeLink(id, playlistId, isPlaylist = false)
+            }
             return null
         }
         if (path == "/playlist") {
@@ -74,5 +80,12 @@ object UrlValidator {
             link.playlistId != null -> "https://www.youtube.com/playlist?list=${link.playlistId}"
             else -> null
         }
+    }
+
+    /** Canonical playlist URL for batch listing (works for watch+list URLs too). */
+    fun canonicalPlaylistUrl(raw: String): String? {
+        val link = parse(raw) ?: return null
+        val playlistId = link.playlistId ?: return null
+        return "https://www.youtube.com/playlist?list=$playlistId"
     }
 }

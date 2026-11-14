@@ -316,6 +316,7 @@ fun AtlasMusicApp() {
                     onCheckUpdate = downloadsVm::checkYtdlpUpdate,
                     onApplyUpdate = downloadsVm::applyYtdlpUpdate,
                     onRestoreBundled = downloadsVm::restoreBundledYtdlp,
+                    onSetPlaylistMode = downloadsVm::setPlaylistMode,
                 )
             }
 

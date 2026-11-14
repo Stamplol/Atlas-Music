@@ -25,6 +25,25 @@ data class YoutubePreview(
     val playlistCount: Int? = null,
     val formats: List<FormatOption> = emptyList(),
     val error: String? = null,
+    /** True when the link points at a playlist (possibly a watch URL with a list= param). */
+    val isPlaylist: Boolean = false,
+    /** True when the link is a bare /playlist?list= URL — there is no single video to fall back to. */
+    val playlistOnly: Boolean = false,
+    val playlistTitle: String = "",
+    val playlistEntries: List<PlaylistEntryPreview> = emptyList(),
+)
+
+data class PlaylistEntryPreview(
+    val url: String,
+    val title: String,
+    val durationSec: Int = 0,
+    val thumbnailUrl: String = "",
+)
+
+data class PlaylistEnqueueResult(
+    val enqueued: Int,
+    val duplicates: Int,
+    val failed: Int,
 )
 
 data class FormatOption(
@@ -62,6 +81,50 @@ class DownloadManager(
     fun preview(url: String): YoutubePreview {
         val canonical = UrlValidator.canonicalUrl(url)
             ?: return YoutubePreview(false, error = "Enter a valid https://www.youtube.com or youtu.be link.")
+        val link = UrlValidator.parse(canonical)
+        val playlistJson = link?.playlistId?.let {
+            UrlValidator.canonicalPlaylistUrl(canonical)?.let { pl -> pythonBridge.listPlaylistEntries(pl) }
+        }
+        val playlistEntries = playlistJson?.takeIf { it.optBoolean("ok") }?.let { json ->
+            buildList {
+                val arr = json.optJSONArray("entries") ?: return@buildList
+                for (i in 0 until arr.length()) {
+                    val e = arr.getJSONObject(i)
+                    val entryUrl = e.optString("url")
+                    if (entryUrl.isNotBlank()) {
+                        add(
+                            PlaylistEntryPreview(
+                                url = entryUrl,
+                                title = e.optString("title").ifBlank { "Untitled video" },
+                                durationSec = e.optInt("duration", 0),
+                                thumbnailUrl = e.optString("thumbnail"),
+                            )
+                        )
+                    }
+                }
+            }
+        } ?: emptyList()
+        val playlistOk = playlistJson?.optBoolean("ok") == true && playlistEntries.isNotEmpty()
+        val playlistCount = playlistEntries.size.takeIf { it > 0 }
+
+        // Playlist-only link: nothing to show for a single video, playlist metadata IS the preview.
+        if (link != null && link.isPlaylist) {
+            if (!playlistOk) {
+                return YoutubePreview(false, error = playlistJson?.optString("error", "Couldn't read this playlist — it may be private or empty.")?.takeIf { it.isNotBlank() } ?: "Couldn't read this playlist.")
+            }
+            return YoutubePreview(
+                ok = true,
+                title = playlistJson.optString("title").ifBlank { "YouTube playlist" },
+                uploader = playlistJson.optString("uploader").ifBlank { "Unknown uploader" },
+                thumbnailUrl = playlistEntries.firstOrNull()?.thumbnailUrl.orEmpty(),
+                playlistCount = playlistCount,
+                isPlaylist = true,
+                playlistOnly = true,
+                playlistTitle = playlistJson.optString("title"),
+                playlistEntries = playlistEntries,
+            )
+        }
+
         val json = pythonBridge.fetchInfo(canonical)
         if (!json.optBoolean("ok")) {
             return YoutubePreview(false, error = json.optString("error", "Couldn't read this link."))
@@ -89,8 +152,11 @@ class DownloadManager(
             uploader = json.optString("uploader").ifBlank { "Unknown uploader" },
             durationSec = json.optInt("duration", 0),
             thumbnailUrl = json.optString("thumbnail"),
-            playlistCount = json.opt("playlist_count")?.toString()?.toIntOrNull(),
+            playlistCount = json.opt("playlist_count")?.toString()?.toIntOrNull() ?: playlistCount,
             formats = options,
+            isPlaylist = playlistOk,
+            playlistTitle = playlistJson?.optString("title").orEmpty(),
+            playlistEntries = playlistEntries,
         )
     }
 
@@ -119,6 +185,62 @@ class DownloadManager(
         )
         DownloadForegroundService.start(context)
         return id
+    }
+
+    /**
+     * Batch-enqueue every playable entry of the playlist behind [url] (AuraFetch-style).
+     * Each video becomes its own task with its own progress/retry — a private or deleted
+     * entry is skipped, not fatal. Duplicate detection is per-video, matching [enqueue].
+     */
+    suspend fun enqueuePlaylist(url: String, format: String): PlaylistEnqueueResult {
+        val playlistUrl = UrlValidator.canonicalPlaylistUrl(url)
+            ?: UrlValidator.canonicalUrl(url)
+            ?: throw IllegalArgumentException("Enter a valid YouTube link.")
+        val json = pythonBridge.listPlaylistEntries(playlistUrl)
+        if (!json.optBoolean("ok")) {
+            throw IllegalStateException(json.optString("error", "Couldn't read this playlist."))
+        }
+        val arr = json.optJSONArray("entries")
+            ?: throw IllegalStateException("This playlist is empty.")
+        if (arr.length() == 0) {
+            throw IllegalStateException("This playlist has no playable videos.")
+        }
+        val formatChoice = when (format) {
+            "opus", "m4a", "best" -> format
+            else -> "opus"
+        }
+        val uploader = json.optString("uploader").ifBlank { "Unknown uploader" }
+        var enqueued = 0
+        var duplicates = 0
+        var failed = 0
+        for (i in 0 until arr.length()) {
+            val e = arr.optJSONObject(i)
+            if (e == null) { failed++; continue }
+            val entryUrl = e.optString("url")
+            if (entryUrl.isBlank()) { failed++; continue }
+            val key = UrlValidator.parse(entryUrl)?.stableKey
+            if (key.isNullOrBlank()) { failed++; continue }
+            // Duplicate detection — same semantics as single enqueue.
+            if (dao.hasActiveOrDone(key)) { duplicates++; continue }
+            try {
+                dao.insert(
+                    DownloadTaskEntity(
+                        url = entryUrl,
+                        videoId = key,
+                        title = e.optString("title").ifBlank { "Untitled video" },
+                        uploader = uploader,
+                        thumbnailUrl = e.optString("thumbnail"),
+                        format = formatChoice,
+                        status = DownloadStatus.QUEUED,
+                    ),
+                )
+                enqueued++
+            } catch (ex: Exception) {
+                failed++
+            }
+        }
+        if (enqueued > 0) DownloadForegroundService.start(context)
+        return PlaylistEnqueueResult(enqueued = enqueued, duplicates = duplicates, failed = failed)
     }
 
     suspend fun retry(taskId: Long) {

@@ -29,6 +29,9 @@ data class DownloadsUiState(
     val updating: Boolean = false,
     val updateProgressMessage: String? = null,
     val consentAccepted: Boolean = false,
+    /** Watch URLs with a list= param: false = just this video, true = the whole playlist. */
+    val playlistMode: Boolean = false,
+    val enqueueMessage: String? = null,
 )
 
 class DownloadsViewModel : ViewModel() {
@@ -45,11 +48,12 @@ class DownloadsViewModel : ViewModel() {
     }
 
     fun onUrlChange(value: String) {
-        _state.value = _state.value.copy(url = value, preview = null, previewError = null)
+        _state.value = _state.value.copy(url = value, preview = null, previewError = null, enqueueMessage = null)
     }
 
     fun setFormat(format: String) { _state.value = _state.value.copy(format = format) }
     fun setConsentAccepted(accepted: Boolean) { _state.value = _state.value.copy(consentAccepted = accepted) }
+    fun setPlaylistMode(enabled: Boolean) { _state.value = _state.value.copy(playlistMode = enabled) }
 
     fun fetchPreview() {
         val url = _state.value.url.trim()
@@ -61,6 +65,8 @@ class DownloadsViewModel : ViewModel() {
                 previewLoading = false,
                 preview = if (preview.ok) preview else null,
                 previewError = preview.error,
+                playlistMode = preview.ok && preview.isPlaylist,
+                enqueueMessage = null,
             )
         }
     }
@@ -72,13 +78,35 @@ class DownloadsViewModel : ViewModel() {
             _state.value = s.copy(previewError = "Please confirm you're authorized to download this content.")
             return
         }
+        val wholePlaylist = preview.playlistOnly || (preview.isPlaylist && s.playlistMode)
         viewModelScope.launch {
-            runCatching {
-                manager.enqueue(s.url, preview.title, preview.uploader, preview.thumbnailUrl, s.format)
-            }.onSuccess {
-                _state.value = _state.value.copy(url = "", preview = null, consentAccepted = false)
-            }.onFailure { e ->
-                _state.value = _state.value.copy(previewError = e.message ?: "Couldn't start the download.")
+            if (wholePlaylist) {
+                runCatching {
+                    manager.enqueuePlaylist(s.url, s.format)
+                }.onSuccess { result ->
+                    val queued = result.enqueued
+                    val extras = buildList {
+                        if (result.duplicates > 0) add("${result.duplicates} already in your downloads")
+                        if (result.failed > 0) add("${result.failed} couldn't be read")
+                    }.joinToString(", ").let { if (it.isNotBlank()) " ($it)" else "" }
+                    _state.value = _state.value.copy(
+                        url = "",
+                        preview = null,
+                        consentAccepted = false,
+                        enqueueMessage = if (queued > 0) "Queued $queued video${if (queued == 1) "" else "s"} from the playlist$extras."
+                        else "Nothing new to queue$extras.",
+                    )
+                }.onFailure { e ->
+                    _state.value = _state.value.copy(previewError = e.message ?: "Couldn't start the playlist download.")
+                }
+            } else {
+                runCatching {
+                    manager.enqueue(s.url, preview.title, preview.uploader, preview.thumbnailUrl, s.format)
+                }.onSuccess {
+                    _state.value = _state.value.copy(url = "", preview = null, consentAccepted = false, enqueueMessage = null)
+                }.onFailure { e ->
+                    _state.value = _state.value.copy(previewError = e.message ?: "Couldn't start the download.")
+                }
             }
         }
     }

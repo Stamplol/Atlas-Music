@@ -62,6 +62,9 @@ class PythonBridge(private val appContext: Context) {
 
     fun fetchInfo(url: String): JSONObject = call("fetch_info", url, "best")
 
+    /** Flat-list a playlist's playable entries. Pure network metadata; never downloads media. */
+    fun listPlaylistEntries(url: String): JSONObject = call("list_playlist_entries", url)
+
     fun download(
         url: String,
         outputDir: String,

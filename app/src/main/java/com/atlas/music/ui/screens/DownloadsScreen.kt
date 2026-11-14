@@ -85,6 +85,7 @@ fun DownloadsScreen(
     onCheckUpdate: () -> Unit,
     onApplyUpdate: () -> Unit,
     onRestoreBundled: () -> Unit,
+    onSetPlaylistMode: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -106,9 +107,28 @@ fun DownloadsScreen(
         item { PasteCard(context = context, state = state, onUrlChange = onUrlChange, onFetchPreview = onFetchPreview) }
 
         state.previewError?.let { error -> item { ErrorBanner(error) } }
+        state.enqueueMessage?.let { message ->
+            item {
+                Text(
+                    message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
+        }
 
         state.preview?.let { preview ->
-            item { PreviewCard(preview = preview, state = state, onSetFormat = onSetFormat, onConsentChange = onConsentChange, onStartDownload = onStartDownload) }
+            item {
+                PreviewCard(
+                    preview = preview,
+                    state = state,
+                    onSetFormat = onSetFormat,
+                    onConsentChange = onConsentChange,
+                    onStartDownload = onStartDownload,
+                    onSetPlaylistMode = onSetPlaylistMode,
+                )
+            }
         }
 
         val active = state.tasks.filter { DownloadStateMachine.isActive(it.status) }
@@ -147,7 +167,7 @@ fun DownloadsScreen(
             item {
                 com.atlas.music.ui.components.EmptyState(
                     title = "No downloads yet",
-                    body = "Paste a link to a video or track you're authorized to save, and it will land in your library when it's done.",
+                    body = "Paste a link to a video, track or playlist you're authorized to save, and it will land in your library when it's done.",
                 )
             }
         }
@@ -180,7 +200,7 @@ private fun PasteCard(
                 value = state.url,
                 onValueChange = onUrlChange,
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("https://www.youtube.com/watch?v=…") },
+                placeholder = { Text("Video, Short or playlist link…") },
                 singleLine = true,
                 trailingIcon = {
                     IconButton(onClick = {
@@ -216,7 +236,9 @@ private fun PreviewCard(
     onSetFormat: (String) -> Unit,
     onConsentChange: (Boolean) -> Unit,
     onStartDownload: () -> Unit,
+    onSetPlaylistMode: (Boolean) -> Unit,
 ) {
+    val wholePlaylist = preview.playlistOnly || (preview.isPlaylist && state.playlistMode)
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         shape = RoundedCornerShape(18.dp),
@@ -235,13 +257,55 @@ private fun PreviewCard(
                     Spacer(Modifier.height(4.dp))
                     Text(preview.uploader, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
-                        Format.duration(preview.durationSec * 1000L) + (preview.playlistCount?.let { "  ·  playlist with $it videos" } ?: ""),
+                        if (preview.playlistOnly) {
+                            "Playlist  ·  ${preview.playlistCount ?: preview.playlistEntries.size} videos"
+                        } else {
+                            Format.duration(preview.durationSec * 1000L) + (preview.playlistCount?.let { "  ·  playlist with $it videos" } ?: "")
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
             Spacer(Modifier.height(12.dp))
+            if (preview.playlistEntries.isNotEmpty()) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            if (preview.playlistOnly) "Entire playlist" else "Entire playlist",
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Text(
+                            "${preview.playlistEntries.size} video${if (preview.playlistEntries.size == 1) "" else "s"} in \"${preview.playlistTitle.ifBlank { "playlist" }}\"",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Switch(
+                        checked = wholePlaylist,
+                        onCheckedChange = onSetPlaylistMode,
+                        enabled = !preview.playlistOnly,
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Column(modifier = Modifier.padding(start = 4.dp)) {
+                    preview.playlistEntries.take(5).forEachIndexed { index, entry ->
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
+                            Text("${index + 1}.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(22.dp))
+                            Text(entry.title, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                            if (entry.durationSec > 0) {
+                                Text(Format.duration(entry.durationSec * 1000L), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                    if (preview.playlistEntries.size > 5) {
+                        Text("… and ${preview.playlistEntries.size - 5} more", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 22.dp, top = 2.dp))
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
             Text("Audio format", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -266,7 +330,7 @@ private fun PreviewCard(
             }
             Spacer(Modifier.height(4.dp))
             Button(onClick = onStartDownload, enabled = state.consentAccepted, modifier = Modifier.fillMaxWidth()) {
-                Text("Download audio")
+                Text(if (wholePlaylist) "Download all ${preview.playlistEntries.size} videos" else "Download audio")
             }
         }
     }

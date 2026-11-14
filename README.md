@@ -76,7 +76,7 @@ Tap any track → background playback, lockscreen + QS tile + shade deck. Swipe 
 - `downloads/` — `PythonBridge`, `DownloadManager`, `DownloadForegroundService`, `YtdlpUpdater`
 - `widget/` — 7 providers: Now Playing 4×1, Small 2×1, Large 4×2, Focus 4×1, Tools 2×1, Stats 4×1, Sleep 2×1
 - `ui/` — `AtlasMusicApp` (NavHost, bottom bar / rail), `theme/`, `components/` (covers, `TrackEditorDialog`), `screens/` (Home, Library, Search, **Tools**, NowPlaying, Queue, PlaylistDetail, Duplicates, SmartList, TrackInfo, Downloads), `viewmodel/` (one VM per screen + `TrackActions`)
-- `assets/python/atlas_ytdlp.py` — only Python in-process (`fetch_info`, `download`, `sha256_file`, `write_tags` via Mutagen)
+- `assets/python/atlas_ytdlp.py` — only Python in-process (`fetch_info`, `list_playlist_entries`, `download`, `sha256_file`, `write_tags`/`read_lyrics` via Mutagen)
 
 Data: `MediaStore / SAF → scan() → Room → Flow → Compose`. Playback: `UI → MediaController → Service → ExoPlayer`. UI never owns the player.
 
@@ -92,9 +92,9 @@ Data: `MediaStore / SAF → scan() → Room → Flow → Compose`. Playback: `UI
 
 **Notification / QS / widgets** — `atlas.playback`, `VISIBILITY_PUBLIC`, gold light, mono small icon. Deck: Prev · Play/Pause · Next · Shuffle · Repeat · ♥ (+ rich text `Artist · Album · Year · Format`). Tap rhythm: shade chip → expanded deck. Tile: one-tap play/pause. 7 widgets (covers via `AtlasBitmapLoader`), Pomodoro/sleep from Tools.
 
-**Tools** (own app, full-screen, back to Home) — Pomodoro (15/25/50 + custom, Focus/Break, Start/Pause/Resume/Reset, duck 35% vol toggle, ledger, today/streak from `pomodoro_sessions`), Sleep center (10/20/30/60 + countdown), EQ presets (Flat/Bass/Vocal/Treble/Night/Mid → band gains), Playback speed, Output picker, Library stats (`trackCount · total time · storage`), Unknowns fixer, Duplicates, Download manager shortcut. Landscape tools → `Atlas Tools — table` dashboard: live clock + `NOW PLAYING / FOCUS / SLEEP / SOUND / LIBRARY` tiles, no scroll.
+**Tools** (own screen, back to Home) — one scroll, no tabs. **FOCUS LAB** hero: gold ring burns down the session (amber arc, ready/paused/running states), today's minutes + session count, 15/25/50 presets, custom durations, streak counter, duck-to-35% toggle, ledger of the last sessions. **SOUND**: EQ presets as live 9-band sparkbars (Flat bypasses the EQ entirely), playback speed, output picker. **SLEEP**: timer chips + countdown and a first-class "Stop at end of track" tile. **LIBRARY CARE**: `tracks · hours · size` mono line, gold panel when tracks lack tags (one tap fixes all), duplicates chevron. Dry maintenance footer (downloads, settings). Landscape → two-column table dashboard: PLAYING (5-button transport) / SOUND with EQ chips + speed / FOCUS with timer + end-of-track / LIBRARY.
 
-**Downloads** — paste YouTube URL → Validate → `fetch_info` preview → format (Opus/M4A) → consent → queue (`temp/` staging → verified move to `Music/Atlas Music` or SAF) → auto-import rescan. No transcoder (no FFmpeg). History, retry, duplicate detection.
+**Downloads** — paste a YouTube link (video, Short, or playlist) → Validate → preview → format (Opus/M4A) → consent → queue (`temp/` staging → verified move to `Music/Atlas Music` or SAF) → auto-import rescan. No transcoder (no FFmpeg). History, retry, duplicate detection. **Playlists**: paste a `/playlist?list=` link and Atlas flat-lists the entries (AuraFetch logic), shows title/count + the first five tracks, and enqueues every playable entry as its own task — private/deleted ones are skipped with a per-video summary (`N queued · M already in library`), not fatal. Watch URLs with a `list=` param offer the same toggle. Robustness: `ignoreerrors` + `skip_unavailable_fragments` + `windowsfilenames`, 4 concurrent fragments, 10 MiB chunks, 10 retries, format-unavailable falls back to `bestaudio/best`.
 
 **yt-dlp** — bundled `2025.10.22`; Check → PyPI wheel → SHA-256 vs PyPI JSON → stage under `filesDir/ytdlp-updates/` → import verify → rollback on fail. `Restore bundled` one tap. Updates only from official wheels.
 

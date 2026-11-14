@@ -78,6 +78,12 @@ class ToolsViewModel : ViewModel() {
                     currentTitle = play.title,
                     lastEvent = _state.value.lastEvent,
                     playerState = play,
+                    // Carry the sibling collectors' values forward — rebuilding the state
+                    // from scratch here zeroed the library stats on every emission.
+                    trackCount = _state.value.trackCount,
+                    totalDurationMs = _state.value.totalDurationMs,
+                    totalSizeBytes = _state.value.totalSizeBytes,
+                    unknownArtistCount = _state.value.unknownArtistCount,
                 )
             }.collect { _state.value = it }
         }
@@ -278,18 +284,16 @@ class ToolsViewModel : ViewModel() {
 
     // ---- EQ presets (band gains in mB, applied by service) ----
     fun applyEqPreset(name: String) {
-        val bands = when (name) {
-            "Flat" -> emptyList()
-            "Bass" -> listOf(600, 600, 300, 0, 0, 0, 0, 0, -300)
-            "Vocal" -> listOf(-300, -300, 0, 600, 600, 300, 0, 0, 0)
-            "Treble" -> listOf(-300, 0, 0, 0, 300, 600, 600, 600, 600)
-            "Night" -> listOf(600, 300, 0, -300, -600, -600, -600, -300, 0)
-            "Mid" -> listOf(0, 0, 0, 600, 600, 0, 0, 0, 0)
-            else -> emptyList()
-        }
+        val bands = com.atlas.music.util.EqCurves.gainsFor(name)
         viewModelScope.launch {
-            settingsRepo.setEqualizer(true)
-            if (bands.isNotEmpty()) settingsRepo.setEqualizerBands(bands) else settingsRepo.setEqualizerBands(emptyList())
+            if (bands.isEmpty()) {
+                // Flat = bypass the equalizer entirely, don't feed the chain zeroed gains.
+                settingsRepo.setEqualizer(false)
+                settingsRepo.setEqualizerBands(emptyList())
+            } else {
+                settingsRepo.setEqualizer(true)
+                settingsRepo.setEqualizerBands(bands)
+            }
             _state.value = _state.value.copy(lastEvent = "EQ: $name")
         }
     }
