@@ -41,6 +41,7 @@ import kotlinx.coroutines.launch
  */
 class AtlasPlaybackService : MediaLibraryService() {
 
+        @Volatile private var lastMediaItemId: String? = null
     companion object {
         /** Exposed so the UI can honestly say when the device has no EQ support. */
         val EffectsStatus = kotlinx.coroutines.flow.MutableStateFlow<Boolean?>(null)
@@ -102,7 +103,18 @@ class AtlasPlaybackService : MediaLibraryService() {
         // If we couldn't generate one, effects will attach to whatever the player picks.
 
         sessionPlayer.addListener(object : Player.Listener {
-            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED) {
+                    // Queue finished on its own — the outgoing track is still owed a play event
+                    // (and a save; otherwise a kill now restores the listen position at 0:00).
+                    lastMediaItemId?.toLongOrNull()?.let { trackId ->
+                        scope.launch { ServiceLocator.musicRepository.recordPlay(trackId) }
+                    }
+                    scope.launch { saveQueueState() }
+                }
+            }
+
+                        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                 // Flawless skip: bad / missing file → next playable, never dead-stop mid-queue.
                 if (error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED ||
                     error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED ||
@@ -115,6 +127,11 @@ class AtlasPlaybackService : MediaLibraryService() {
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                // The outgoing item — credit it with the play when it ended on its own.
+                // Previously the NEW item got the credit, which double-counted successors
+                // and starved finished tracks (found in the polish pass).
+                val outgoingId = lastMediaItemId
+                lastMediaItemId = mediaItem?.mediaId
                 scope.launch {
                     saveQueueState()
                     val id = mediaItem?.mediaId?.toLongOrNull()
@@ -126,8 +143,8 @@ class AtlasPlaybackService : MediaLibraryService() {
                 if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
                     reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
                 ) {
-                    if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
-                        mediaItem?.mediaId?.toLongOrNull()?.let { trackId ->
+                    if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && outgoingId != null) {
+                        outgoingId.toLongOrNull()?.let { trackId ->
                             scope.launch { ServiceLocator.musicRepository.recordPlay(trackId) }
                         }
                     }

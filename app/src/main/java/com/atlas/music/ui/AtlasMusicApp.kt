@@ -523,15 +523,18 @@ fun AtlasMusicApp() {
                     viewModel = duplicatesVm,
                     onBack = { navController.popBackStack() },
                     onRemoveFromLibrary = { track ->
-                        scope.launch { TrackActions.removeFromLibrary(track); snackbar.showSnackbar("Removed from library") }
-                        duplicatesVm.refresh()
+                        scope.launch {
+                            TrackActions.removeFromLibrary(track)
+                            snackbar.showSnackbar("Removed from library")
+                            duplicatesVm.refresh()
+                        }
                     },
                     onKeepOnly = { keep, group ->
                         scope.launch {
                             group.filter { it.id != keep.id }.forEach { ServiceLocator.musicRepository.deleteTrack(it.id) }
                             snackbar.showSnackbar("Kept “${keep.title}”, removed ${group.size - 1} ${if (group.size - 1 == 1) "copy" else "copies"}")
+                            duplicatesVm.refresh()
                         }
-                        duplicatesVm.refresh()
                     },
                 )
             }
