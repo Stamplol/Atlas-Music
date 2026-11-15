@@ -1,6 +1,7 @@
 package com.atlas.music.ui.screens
 
 import android.content.Context
+import com.atlas.music.ui.components.AtlasIconButton
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
@@ -289,16 +290,16 @@ fun NowPlayingScreen(
                 // RIGHT: controls stack (vertically centered, thumb-reachable)
                 Column(modifier = Modifier.weight(1f).fillMaxHeight().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.Center) {
                     Row(modifier = Modifier.statusBarsPadding(), verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onClose) {
+                        AtlasIconButton(text = "Back", onClick = onClose) {
                             Icon(Icons.Filled.Close, contentDescription = "Close now playing", tint = Color.White)
                         }
                         Spacer(Modifier.weight(1f))
                         Text("NOW PLAYING", style = MaterialTheme.typography.titleSmall, color = Color.White.copy(alpha = 0.65f))
                         Spacer(Modifier.weight(1f))
-                        IconButton(onClick = { showLyrics = !showLyrics }) {
+                        AtlasIconButton(text = "Lyrics", onClick = { showLyrics = !showLyrics }) {
                             Icon(Icons.Filled.Lyrics, contentDescription = "Lyrics", tint = if (showLyrics) MaterialTheme.colorScheme.primary else Color.White)
                         }
-                        IconButton(onClick = onOpenInfo) {
+                        AtlasIconButton(text = "Track information", onClick = onOpenInfo) {
                             Icon(Icons.Filled.GraphicEq, contentDescription = "Track information", tint = Color.White)
                         }
                     }
@@ -349,10 +350,10 @@ fun NowPlayingScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceEvenly,
                     ) {
-                        IconButton(onClick = onToggleShuffle) {
+                        AtlasIconButton(text = "Shuffle", onClick = onToggleShuffle) {
                             Icon(Icons.Filled.Shuffle, contentDescription = "Toggle shuffle", tint = if (state.shuffleEnabled) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.65f))
                         }
-                        IconButton(onClick = onSkipPrevious, modifier = Modifier.size(56.dp)) {
+                        AtlasIconButton(text = "Previous track", onClick = onSkipPrevious, modifier = Modifier.size(56.dp)) {
                             Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous track", tint = Color.White, modifier = Modifier.size(32.dp))
                         }
                         Box(
@@ -366,10 +367,10 @@ fun NowPlayingScreen(
                                 modifier = Modifier.size(36.dp),
                             )
                         }
-                        IconButton(onClick = onSkipNext, modifier = Modifier.size(56.dp)) {
+                        AtlasIconButton(text = "Next track", onClick = onSkipNext, modifier = Modifier.size(56.dp)) {
                             Icon(Icons.Filled.SkipNext, contentDescription = "Next track", tint = Color.White, modifier = Modifier.size(32.dp))
                         }
-                        IconButton(onClick = onCycleRepeatMode) {
+                        AtlasIconButton(text = "Cycle repeat mode", onClick = onCycleRepeatMode) {
                             when (state.repeatMode) {
                                 Player.REPEAT_MODE_ONE -> Icon(Icons.Filled.RepeatOne, contentDescription = "Repeat one track", tint = MaterialTheme.colorScheme.primary)
                                 Player.REPEAT_MODE_ALL -> Icon(Icons.Filled.Repeat, contentDescription = "Repeat queue", tint = MaterialTheme.colorScheme.primary)
@@ -382,7 +383,7 @@ fun NowPlayingScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        IconButton(onClick = onToggleFavorite) {
+                        AtlasIconButton(text = "Add to favorites", onClick = onToggleFavorite) {
                             Icon(
                                 imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                                 contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
@@ -390,7 +391,7 @@ fun NowPlayingScreen(
                             )
                         }
                         SleepTimerControl(endAt = sleepTimerEndAt, defaultMinutes = 30, onStart = onStartSleepTimer, onClear = onClearSleepTimer)
-                        IconButton(onClick = onOpenQueue) {
+                        AtlasIconButton(text = "Open queue", onClick = onOpenQueue) {
                             Icon(Icons.Filled.QueueMusic, contentDescription = "Open queue", tint = Color.White)
                         }
                     }
@@ -417,7 +418,7 @@ fun NowPlayingScreen(
             }
             // Floating SVG tools toggle — bottom right (landscape only), plain icon
             Box(modifier = Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 20.dp)) {
-                IconButton(onClick = { showToolsPanel = !showToolsPanel }) {
+                AtlasIconButton(text = "Toggle tools", onClick = { showToolsPanel = !showToolsPanel }) {
                     Icon(
                         imageVector = ImageVector.vectorResource(R.drawable.ic_tools_toggle),
                         contentDescription = "Toggle tools",
@@ -445,7 +446,7 @@ fun NowPlayingScreen(
         ) {
             item {
                 Row(modifier = Modifier.statusBarsPadding(), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onClose) {
+                    AtlasIconButton(text = "Back", onClick = onClose) {
                         Icon(Icons.Filled.Close, contentDescription = "Close now playing", tint = Color.White)
                     }
                     Spacer(Modifier.weight(1f))
@@ -455,10 +456,10 @@ fun NowPlayingScreen(
                         color = Color.White.copy(alpha = 0.65f),
                     )
                     Spacer(Modifier.weight(1f))
-                    IconButton(onClick = { showLyrics = !showLyrics }) {
+                    AtlasIconButton(text = "Lyrics", onClick = { showLyrics = !showLyrics }) {
                         Icon(Icons.Filled.Lyrics, contentDescription = "Lyrics", tint = if (showLyrics) MaterialTheme.colorScheme.primary else Color.White)
                     }
-                    IconButton(onClick = onOpenInfo) {
+                    AtlasIconButton(text = "Track information", onClick = onOpenInfo) {
                         Icon(Icons.Filled.GraphicEq, contentDescription = "Track information", tint = Color.White)
                     }
                 }
@@ -585,14 +586,14 @@ fun NowPlayingScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
-                    IconButton(onClick = onToggleShuffle) {
+                    AtlasIconButton(text = "Shuffle", onClick = onToggleShuffle) {
                         Icon(
                             Icons.Filled.Shuffle,
                             contentDescription = "Toggle shuffle",
                             tint = if (state.shuffleEnabled) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.65f),
                         )
                     }
-                    IconButton(onClick = onSkipPrevious, modifier = Modifier.size(56.dp)) {
+                    AtlasIconButton(text = "Previous track", onClick = onSkipPrevious, modifier = Modifier.size(56.dp)) {
                         Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous track", tint = Color.White, modifier = Modifier.size(32.dp))
                     }
                     Box(
@@ -611,10 +612,10 @@ fun NowPlayingScreen(
                             modifier = Modifier.size(38.dp),
                         )
                     }
-                    IconButton(onClick = onSkipNext, modifier = Modifier.size(56.dp)) {
+                    AtlasIconButton(text = "Next track", onClick = onSkipNext, modifier = Modifier.size(56.dp)) {
                         Icon(Icons.Filled.SkipNext, contentDescription = "Next track", tint = Color.White, modifier = Modifier.size(32.dp))
                     }
-                    IconButton(onClick = onCycleRepeatMode) {
+                    AtlasIconButton(text = "Cycle repeat mode", onClick = onCycleRepeatMode) {
                         when (state.repeatMode) {
                             Player.REPEAT_MODE_ONE ->
                                 Icon(Icons.Filled.RepeatOne, contentDescription = "Repeat one track", tint = MaterialTheme.colorScheme.primary)
@@ -633,7 +634,7 @@ fun NowPlayingScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    IconButton(onClick = onToggleFavorite) {
+                    AtlasIconButton(text = "Add to favorites", onClick = onToggleFavorite) {
                         Icon(
                             imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                             contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
@@ -646,7 +647,7 @@ fun NowPlayingScreen(
                         onStart = onStartSleepTimer,
                         onClear = onClearSleepTimer,
                     )
-                    IconButton(onClick = onOpenQueue) {
+                    AtlasIconButton(text = "Open queue", onClick = onOpenQueue) {
                         Icon(Icons.Filled.QueueMusic, contentDescription = "Open queue", tint = Color.White)
                     }
                 }
@@ -920,7 +921,7 @@ private fun SleepTimerControl(
             Text("$minutes min — tap to cancel", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
         }
     } else {
-        IconButton(onClick = { onStart(defaultMinutes) }) {
+        AtlasIconButton(text = "Start sleep timer", onClick = { onStart(defaultMinutes) }) {
             Icon(Icons.Filled.Timer, contentDescription = "Start sleep timer ($defaultMinutes min)", tint = Color.White)
         }
     }

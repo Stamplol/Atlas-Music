@@ -1,5 +1,6 @@
 package com.atlas.music.ui.screens
 
+import com.atlas.music.ui.components.AtlasIconButton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -100,7 +101,7 @@ fun LibraryScreen(
             colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             actions = {
                 Box {
-                    IconButton(onClick = { sortMenuOpen = true }) {
+                    AtlasIconButton(text = "{ sortMenuOpen = true }", onClick = { sortMenuOpen = true }) {
                         Icon(Icons.Filled.Sort, contentDescription = "Sort library")
                     }
                     DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {

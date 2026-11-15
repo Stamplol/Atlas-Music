@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.atlas.music.ui
 
+import com.atlas.music.ui.components.AtlasIconButton
+
 import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Spacer
@@ -191,7 +193,7 @@ fun AtlasMusicApp() {
             if (landscape && showBottomBar) {
                 NavigationRail(containerColor = MaterialTheme.colorScheme.surface, modifier = Modifier.width(84.dp)) {
                     // Mini player condensed for rail
-                    androidx.compose.material3.IconButton(onClick = { navController.navigate("nowplaying") }) {
+                    AtlasIconButton(text = "Open Now Playing", onClick = { navController.navigate("nowplaying") }) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = "Now playing", tint = MaterialTheme.colorScheme.primary)
                     }
                     TABS.forEach { tab ->

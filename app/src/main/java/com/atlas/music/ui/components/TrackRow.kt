@@ -1,5 +1,6 @@
 package com.atlas.music.ui.components
 
+import com.atlas.music.ui.components.AtlasIconButton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -106,14 +107,14 @@ fun TrackRow(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 8.dp),
         )
-        IconButton(onClick = { onToggleFavorite(track) }) {
+        AtlasIconButton(text = "Toggle favorite", onClick = { onToggleFavorite(track) }) {
             Icon(
                 imageVector = if (track.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                 contentDescription = if (track.isFavorite) "Remove from favorites" else "Add to favorites",
                 tint = if (track.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        IconButton(onClick = { menuOpen = true }) {
+        AtlasIconButton(text = "{ menuOpen = true }", onClick = { menuOpen = true }) {
             Icon(
                 imageVector = Icons.Filled.MoreVert,
                 contentDescription = "Track options",

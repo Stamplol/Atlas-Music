@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 package com.atlas.music.ui.screens
 
+import com.atlas.music.ui.components.AtlasIconButton
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -67,7 +69,7 @@ fun SearchScreen(
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             trailingIcon = {
                 if (state.query.isNotEmpty()) {
-                    IconButton(onClick = onClear) { Icon(Icons.Filled.Clear, contentDescription = "Clear search") }
+                    AtlasIconButton(text = "Clear search", onClick = onClear) { Icon(Icons.Filled.Clear, contentDescription = "Clear search") }
                 }
             },
             singleLine = true,

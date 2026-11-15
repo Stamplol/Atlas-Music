@@ -1,9 +1,12 @@
 package com.atlas.music.ui.screens
 
+import com.atlas.music.ui.components.AtlasIconButton
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,6 +17,8 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,6 +58,7 @@ fun PlaylistDetailScreen(
     var renaming by remember { mutableStateOf(false) }
     var renameInput by remember(state.playlist?.name) { mutableStateOf(state.playlist?.name ?: "") }
     var confirmDelete by remember { mutableStateOf(false) }
+    var showPicker by remember { mutableStateOf(false) }
     val playlist = state.playlist
     val totalMs = state.tracks.sumOf { it.durationMs }
 
@@ -65,11 +71,12 @@ fun PlaylistDetailScreen(
                 }
             },
             navigationIcon = {
-                IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") }
+                AtlasIconButton(text = "Back", onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") }
             },
             actions = {
-                IconButton(onClick = { renaming = true }) { Icon(Icons.Filled.Edit, contentDescription = "Rename playlist") }
-                IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Filled.Delete, contentDescription = "Delete playlist") }
+                AtlasIconButton(text = "Add tracks", onClick = { showPicker = true }) { Icon(Icons.Filled.Add, contentDescription = "Add tracks") }
+                AtlasIconButton(text = "Rename playlist", onClick = { renaming = true }) { Icon(Icons.Filled.Edit, contentDescription = "Rename playlist") }
+                AtlasIconButton(text = "Delete playlist", onClick = { confirmDelete = true }) { Icon(Icons.Filled.Delete, contentDescription = "Delete playlist") }
             },
         )
         Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
@@ -111,17 +118,17 @@ fun PlaylistDetailScreen(
                         )
                     }
                     Column {
-                        IconButton(onClick = { viewModel.moveTrack(track.id, (index - 1).coerceAtLeast(0)) }, modifier = Modifier.size(32.dp)) {
+                        AtlasIconButton(text = "{ viewModel.moveTrack(track.id, (index - 1).coerceAtLeast(0)) }, modifier = Modifier.size(32.dp)", onClick = { viewModel.moveTrack(track.id, (index - 1).coerceAtLeast(0)) }, modifier = Modifier.size(32.dp)) {
                             Icon(Icons.Filled.ArrowUpward, contentDescription = "Move up", modifier = Modifier.size(16.dp))
                         }
-                        IconButton(onClick = { viewModel.moveTrack(track.id, (index + 1).coerceAtMost(state.tracks.lastIndex)) }, modifier = Modifier.size(32.dp)) {
+                        AtlasIconButton(text = "{ viewModel.moveTrack(track.id, (index + 1).coerceAtMost(state.tracks.lastIndex)) }, modifier = Modifier.size(32.dp)", onClick = { viewModel.moveTrack(track.id, (index + 1).coerceAtMost(state.tracks.lastIndex)) }, modifier = Modifier.size(32.dp)) {
                             Icon(Icons.Filled.ArrowDownward, contentDescription = "Move down", modifier = Modifier.size(16.dp))
                         }
                     }
-                    IconButton(onClick = { onEditTags(track) }) {
+                    AtlasIconButton(text = "Edit tags", onClick = { onEditTags(track) }) {
                         Icon(Icons.Filled.Edit, contentDescription = "Edit tags", modifier = Modifier.size(18.dp))
                     }
-                    IconButton(onClick = { viewModel.removeTrack(track) }) {
+                    AtlasIconButton(text = "{ viewModel.removeTrack(track) }", onClick = { viewModel.removeTrack(track) }) {
                         Icon(Icons.Filled.Delete, contentDescription = "Remove from playlist", modifier = Modifier.size(18.dp))
                     }
                 }
@@ -155,5 +162,66 @@ fun PlaylistDetailScreen(
             },
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
         )
+
+
+        if (showPicker) {
+            AddTracksDialog(
+                onDismiss = { showPicker = false },
+                existingIds = state.tracks.map { it.id }.toSet(),
+                onAdd = { ids ->
+                    viewModel.addTracks(ids)
+                    showPicker = false
+                },
+            )
+        }
     }
+}
+
+@Composable
+private fun AddTracksDialog(
+    onDismiss: () -> Unit,
+    existingIds: Set<Long>,
+    onAdd: (Set<Long>) -> Unit,
+) {
+    val library by com.atlas.music.di.ServiceLocator.musicRepository.observeAll(com.atlas.music.util.SortOption.TITLE).collectAsState(initial = emptyList())
+    var selected by remember { mutableStateOf(emptySet<Long>()) }
+    val candidates = remember(library, existingIds) { library.filter { it.id !in existingIds } }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add tracks to this playlist") },
+        text = {
+            Column(modifier = Modifier.height(420.dp).fillMaxWidth()) {
+                if (candidates.isEmpty()) {
+                    Text(
+                        "Everything in your library is already in this playlist. Nice.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        itemsIndexed(candidates, key = { _, t -> t.id }) { _, track ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    selected = if (track.id in selected) selected - track.id else selected + track.id
+                                }.padding(vertical = 4.dp),
+                            ) {
+                                Checkbox(checked = track.id in selected, onCheckedChange = { checked ->
+                                    selected = if (checked) selected + track.id else selected - track.id
+                                })
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(track.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text("${track.artist} · ${track.album}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onAdd(selected) }, enabled = selected.isNotEmpty()) { Text("Add ${selected.size}") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }

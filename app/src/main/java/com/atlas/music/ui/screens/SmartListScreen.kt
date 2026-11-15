@@ -1,5 +1,6 @@
 package com.atlas.music.ui.screens
 
+import com.atlas.music.ui.components.AtlasIconButton
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -48,7 +49,7 @@ fun SmartListScreen(
                 }
             },
             navigationIcon = {
-                IconButton(onClick = onBack) {
+                AtlasIconButton(text = "Back", onClick = onBack) {
                     androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.ArrowBack, contentDescription = "Back")
                 }
             },

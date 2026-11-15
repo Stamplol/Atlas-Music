@@ -1,5 +1,6 @@
 package com.atlas.music.ui.screens
 
+import com.atlas.music.ui.components.AtlasIconButton
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -49,7 +50,7 @@ fun DuplicatesScreen(
     Column(modifier = modifier.fillMaxWidth()) {
         TopAppBar(
             title = { Text("Duplicates", fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold) },
-            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") } },
+            navigationIcon = { AtlasIconButton(text = "Back", onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") } },
         )
         if (!loading && groups.isEmpty()) {
             EmptyState(
@@ -101,7 +102,7 @@ fun DuplicatesScreen(
                                 OutlinedButton(onClick = { onKeepOnly(track, group.tracks) }) {
                                     Text("Keep this")
                                 }
-                                IconButton(onClick = { onRemoveFromLibrary(track) }) {
+                                AtlasIconButton(text = "Remove from library", onClick = { onRemoveFromLibrary(track) }) {
                                     Icon(Icons.Filled.Delete, contentDescription = "Remove from library", modifier = Modifier.size(18.dp))
                                 }
                             }

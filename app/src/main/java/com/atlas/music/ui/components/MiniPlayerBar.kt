@@ -1,5 +1,6 @@
 package com.atlas.music.ui.components
 
+import com.atlas.music.ui.components.AtlasIconButton
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -104,14 +105,14 @@ fun MiniPlayerBar(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            IconButton(onClick = onTogglePlayPause) {
+            AtlasIconButton(text = "OnTogglePlayPause", onClick = onTogglePlayPause) {
                 Icon(
                     imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                     contentDescription = if (state.isPlaying) "Pause" else "Play",
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
-            IconButton(onClick = onSkipNext) {
+            AtlasIconButton(text = "Next track", onClick = onSkipNext) {
                 Icon(
                     imageVector = Icons.Filled.SkipNext,
                     contentDescription = "Next track",

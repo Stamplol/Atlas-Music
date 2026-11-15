@@ -38,4 +38,16 @@ class QueueViewModel : ViewModel() {
         ServiceLocator.playbackConnection.clearQueue()
         refresh()
     }
+
+    /** Saves the ordered queue as a new playlist. Returns the created playlist name, or null when empty. */
+    suspend fun saveAsPlaylist(name: String): String? {
+        val current = _tracks.value
+        if (current.isEmpty()) return null
+        val trimmed = name.trim().ifBlank { null } ?: return null
+        val playlistId = ServiceLocator.playlistRepository.create(trimmed)
+        for (track in current) {
+            ServiceLocator.playlistRepository.addTrack(playlistId, track.id)
+        }
+        return trimmed
+    }
 }

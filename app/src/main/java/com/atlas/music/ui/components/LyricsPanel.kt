@@ -1,5 +1,7 @@
 package com.atlas.music.ui.components
 
+import com.atlas.music.ui.components.AtlasIconButton
+
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -90,7 +92,7 @@ fun LyricsPanel(
 
     Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Row(modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onClose) { Icon(Icons.Filled.Close, contentDescription = "Close lyrics") }
+            AtlasIconButton(text = "Close lyrics", onClick = onClose) { Icon(Icons.Filled.Close, contentDescription = "Close lyrics") }
             Spacer(Modifier.weight(1f))
             Text("LYRICS", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.weight(1f))

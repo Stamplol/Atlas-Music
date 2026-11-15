@@ -1,5 +1,6 @@
 package com.atlas.music.ui.screens
 
+import com.atlas.music.ui.components.AtlasIconButton
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,19 +16,29 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import com.atlas.music.ui.components.AlbumArt
 import com.atlas.music.ui.viewmodel.QueueViewModel
 import com.atlas.music.util.Format
@@ -43,16 +54,25 @@ fun QueueScreen(
     modifier: Modifier = Modifier,
 ) {
     val tracks by viewModel.tracks.collectAsState()
+    var showSaveDialog by remember { mutableStateOf(false) }
+    var playlistName by remember { mutableStateOf("") }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) { viewModel.refresh() }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    androidx.compose.foundation.layout.Box(modifier = modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text("Queue · ${tracks.size} ${if (tracks.size == 1) "track" else "tracks"}", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
             navigationIcon = {
-                IconButton(onClick = onClose) { Icon(Icons.Filled.Close, contentDescription = "Close queue") }
+                AtlasIconButton(text = "Close queue", onClick = onClose) { Icon(Icons.Filled.Close, contentDescription = "Close queue") }
             },
             actions = {
                 if (tracks.isNotEmpty()) {
+                    TextButton(onClick = { playlistName = "Queue · ${tracks.size} tracks"; showSaveDialog = true }) {
+                        Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null)
+                        Text("Save")
+                    }
                     TextButton(onClick = viewModel::clear) {
                         Icon(Icons.Filled.ClearAll, contentDescription = null)
                         Text("Clear")
@@ -106,18 +126,50 @@ fun QueueScreen(
                         )
                     }
                     Column {
-                        IconButton(onClick = { viewModel.moveItem(index, (index - 1).coerceAtLeast(0)) }, modifier = Modifier.size(32.dp)) {
+                        AtlasIconButton(text = "{ viewModel.moveItem(index, (index - 1).coerceAtLeast(0)) }, modifier = Modifier.size(32.dp)", onClick = { viewModel.moveItem(index, (index - 1).coerceAtLeast(0)) }, modifier = Modifier.size(32.dp)) {
                             Icon(Icons.Filled.ArrowUpward, contentDescription = "Move up", modifier = Modifier.size(16.dp))
                         }
-                        IconButton(onClick = { viewModel.moveItem(index, (index + 1).coerceAtMost(tracks.lastIndex)) }, modifier = Modifier.size(32.dp)) {
+                        AtlasIconButton(text = "{ viewModel.moveItem(index, (index + 1).coerceAtMost(tracks.lastIndex)) }, modifier = Modifier.size(32.dp)", onClick = { viewModel.moveItem(index, (index + 1).coerceAtMost(tracks.lastIndex)) }, modifier = Modifier.size(32.dp)) {
                             Icon(Icons.Filled.ArrowDownward, contentDescription = "Move down", modifier = Modifier.size(16.dp))
                         }
                     }
-                    IconButton(onClick = { viewModel.removeItem(index) }) {
+                    AtlasIconButton(text = "{ viewModel.removeItem(index) }", onClick = { viewModel.removeItem(index) }) {
                         Icon(Icons.Filled.Close, contentDescription = "Remove from queue", modifier = Modifier.size(18.dp))
                     }
                 }
             }
         }
+    } // end of Column (inside Box)
+
+    SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
+
+    if (showSaveDialog) {
+        AlertDialog(
+            onDismissRequest = { showSaveDialog = false },
+            title = { Text("Save queue as playlist") },
+            text = {
+                Column {
+                    Text("Every track in the current order becomes a playlist you can play, renumber, and play differently forever.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedTextField(
+                        value = playlistName,
+                        onValueChange = { playlistName = it },
+                        label = { Text("Playlist name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showSaveDialog = false
+                    scope.launch {
+                        val saved = viewModel.saveAsPlaylist(playlistName)
+                        snackbarHostState.showSnackbar(if (saved != null) "Saved as “$saved” playlist" else "Couldn't save the playlist — empty name or empty queue.")
+                    }
+                }) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { showSaveDialog = false }) { Text("Cancel") } },
+        )
     }
+    } // end of Box
 }

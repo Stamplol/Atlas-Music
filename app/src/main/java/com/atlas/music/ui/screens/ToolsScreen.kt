@@ -1,5 +1,6 @@
 package com.atlas.music.ui.screens
 
+import com.atlas.music.ui.components.AtlasIconButton
 import android.content.Context
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
@@ -138,7 +139,7 @@ fun ToolsScreen(
         Column(modifier = modifier.fillMaxSize()) {
             TopAppBar(
                 title = { Text("Tools", fontWeight = FontWeight.ExtraBold) },
-                navigationIcon = { IconButton(onClick = onExit) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to music") } },
+                navigationIcon = { AtlasIconButton(text = "Back to music", onClick = onExit) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to music") } },
                 modifier = Modifier.statusBarsPadding(),
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
@@ -200,14 +201,14 @@ private fun PlayerStrip(
                     Text(player.title.ifBlank { "Nothing playing" }, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(player.artist.ifBlank { "Tap to browse your library" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                IconButton(onClick = viewModel::togglePlayPause) {
+                AtlasIconButton(text = "Play / pause", onClick = viewModel::togglePlayPause) {
                     Icon(
                         if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                         contentDescription = if (state.isPlaying) "Pause" else "Play",
                         tint = MaterialTheme.colorScheme.primary,
                     )
                 }
-                IconButton(onClick = onOpenQueue) {
+                AtlasIconButton(text = "Open queue", onClick = onOpenQueue) {
                     Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Queue", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -391,6 +392,34 @@ private fun SoundCard(
                 }
             }
             Spacer(Modifier.height(14.dp))
+            // Crossfade — timer the service honors on track boundaries
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Crossfade", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        if (state.settings.crossfadeEnabled) "Fading out / in over ${state.settings.crossfadeSeconds}s" else "Gapless — no overlap, hard cuts",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = state.settings.crossfadeEnabled, onCheckedChange = viewModel::setCrossfade)
+            }
+            if (state.settings.crossfadeEnabled) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
+                    listOf(2, 5, 8, 12).forEach { s ->
+                        FilterChip(selected = state.settings.crossfadeSeconds == s, onClick = { viewModel.setCrossfadeSeconds(s) }, label = { Text("${s}s") })
+                    }
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Volume normalization", style = MaterialTheme.typography.titleSmall)
+                    Text("+4 dB target — one loudness for the whole library", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked = state.settings.normalizationEnabled, onCheckedChange = viewModel::setNormalization)
+            }
+            Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Speed", style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.weight(1f))
@@ -628,7 +657,7 @@ private fun ToolsLandscapeDashboard(
     val clockTick = clockTickState.longValue
     Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onExit) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+            AtlasIconButton(text = "Back to music", onClick = onExit) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
             Text("Tools", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
             Spacer(Modifier.weight(1f))
             Text(SimpleDateFormat("HH:mm", Locale.getDefault()).format(remember(clockTick) { Date() }), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -654,11 +683,11 @@ private fun ToolsLandscapeDashboard(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.clickable(onClick = onOpenNowPlaying),
                         ) {
-                            IconButton(onClick = viewModel::skipPrevious) { Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous") }
-                            IconButton(onClick = viewModel::togglePlayPause) { Icon(if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, contentDescription = "Play/Pause", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(34.dp)) }
-                            IconButton(onClick = viewModel::skipNext) { Icon(Icons.Filled.SkipNext, contentDescription = "Next") }
-                            IconButton(onClick = viewModel::toggleShuffle) { Icon(Icons.Filled.Shuffle, contentDescription = "Shuffle", tint = if (state.playerState.shuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
-                            IconButton(onClick = viewModel::cycleRepeatMode) {
+                            AtlasIconButton(text = "Previous track", onClick = viewModel::skipPrevious) { Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous") }
+                            AtlasIconButton(text = "Play / pause", onClick = viewModel::togglePlayPause) { Icon(if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, contentDescription = "Play/Pause", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(34.dp)) }
+                            AtlasIconButton(text = "Next track", onClick = viewModel::skipNext) { Icon(Icons.Filled.SkipNext, contentDescription = "Next") }
+                            AtlasIconButton(text = "Shuffle", onClick = viewModel::toggleShuffle) { Icon(Icons.Filled.Shuffle, contentDescription = "Shuffle", tint = if (state.playerState.shuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
+                            AtlasIconButton(text = "Cycle repeat mode", onClick = viewModel::cycleRepeatMode) {
                                 Icon(
                                     when (state.playerState.repeatMode) {
                                         Player.REPEAT_MODE_ONE -> Icons.Filled.RepeatOne

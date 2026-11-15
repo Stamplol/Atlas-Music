@@ -45,4 +45,13 @@ class PlaylistDetailViewModel(private val playlistId: Long) : ViewModel() {
     fun delete() { viewModelScope.launch { playlists.delete(playlistId) } }
 
     fun moveTrack(trackId: Long, toIndex: Int) { viewModelScope.launch { playlists.moveTrack(playlistId, trackId, toIndex) } }
+
+    /**
+     * Batch-add tracks already in the library — the Flow above picks them up and
+     * re-resolves automatically, so no manual refresh is needed here.
+     */
+    fun addTracks(ids: Set<Long>) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch { ids.forEach { playlists.addTrack(playlistId, it) } }
+    }
 }

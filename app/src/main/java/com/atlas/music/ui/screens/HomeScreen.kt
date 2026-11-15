@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 package com.atlas.music.ui.screens
 
+import com.atlas.music.ui.components.AtlasIconButton
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
@@ -212,7 +213,7 @@ private fun HomeHeader(state: HomeUiState, onRescan: () -> Unit) {
             Text("Atlas Music", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
             Text("AD-LESS MUSIC.", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
         }
-        IconButton(onClick = onRescan) {
+        AtlasIconButton(text = "Rescan library", onClick = onRescan) {
             if (state.scanning) {
                 CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
             } else {

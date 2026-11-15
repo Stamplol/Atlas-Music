@@ -244,9 +244,12 @@ class ToolsViewModel : ViewModel() {
         }
     }
 
-    // ---- Sleep timer passthrough (now centered here, still lives in Now Playing) ----
+    // ---- Audio passthrough ----
     fun startSleepTimer(minutes: Int) = ServiceLocator.playbackConnection.startSleepTimer(minutes)
     fun clearSleepTimer() = ServiceLocator.playbackConnection.clearSleepTimer()
+    fun setCrossfade(enabled: Boolean) = viewModelScope.launch { settingsRepo.setCrossfade(enabled) }
+    fun setCrossfadeSeconds(seconds: Int) = viewModelScope.launch { settingsRepo.setCrossfadeSeconds(seconds) }
+    fun setNormalization(enabled: Boolean) = viewModelScope.launch { settingsRepo.setNormalization(enabled) }
 
     // ---- Player integration ----
     fun togglePlayPause() = ServiceLocator.playbackConnection.togglePlayPause()

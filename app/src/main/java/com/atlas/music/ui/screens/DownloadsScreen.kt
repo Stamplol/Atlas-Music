@@ -1,5 +1,6 @@
 package com.atlas.music.ui.screens
 
+import com.atlas.music.ui.components.AtlasIconButton
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.foundation.background
@@ -203,7 +204,7 @@ private fun PasteCard(
                 placeholder = { Text("Video, Short, playlist or SoundCloud link…") },
                 singleLine = true,
                 trailingIcon = {
-                    IconButton(onClick = {
+                    AtlasIconButton(text = "Paste from clipboard", onClick = {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         clipboard.primaryClip?.getItemAt(0)?.text?.toString()?.let(onUrlChange)
                     }) {
@@ -428,12 +429,12 @@ private fun DownloadTaskRow(
             }
             when (task.status) {
                 DownloadStatus.QUEUED, DownloadStatus.FETCHING_INFO, DownloadStatus.DOWNLOADING ->
-                    IconButton(onClick = { onCancel(task.id) }) { Icon(Icons.Filled.Cancel, contentDescription = "Cancel download") }
+                    AtlasIconButton(text = "Cancel download", onClick = { onCancel(task.id) }) { Icon(Icons.Filled.Cancel, contentDescription = "Cancel download") }
                 DownloadStatus.FAILED, DownloadStatus.CANCELLED ->
-                    IconButton(onClick = { onRetry(task.id) }) { Icon(Icons.Filled.Replay, contentDescription = "Retry download") }
+                    AtlasIconButton(text = "Retry download", onClick = { onRetry(task.id) }) { Icon(Icons.Filled.Replay, contentDescription = "Retry download") }
                 DownloadStatus.COMPLETED -> Unit
             }
-            IconButton(onClick = { onDelete(task.id) }) {
+            AtlasIconButton(text = "Remove from history", onClick = { onDelete(task.id) }) {
                 Icon(Icons.Filled.Delete, contentDescription = "Remove from history", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
