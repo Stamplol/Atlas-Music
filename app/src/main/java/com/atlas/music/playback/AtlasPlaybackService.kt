@@ -449,7 +449,7 @@ class AtlasPlaybackService : MediaLibraryService() {
             bassBoost?.let { bb ->
                 if (settings.bassBoostEnabled && bb.strengthSupported) {
                     bb.enabled = true
-                    bb.setStrength(600)
+                    bb.setStrength((settings.bassBoostStrength * 10).toShort())
                 } else {
                     bb.enabled = false
                 }
@@ -457,7 +457,7 @@ class AtlasPlaybackService : MediaLibraryService() {
             loudness?.let { le ->
                 if (settings.normalizationEnabled) {
                     le.enabled = true
-                    le.setTargetGain(400)
+                    le.setTargetGain(settings.loudnessGainMb)
                 } else {
                     le.enabled = false
                 }

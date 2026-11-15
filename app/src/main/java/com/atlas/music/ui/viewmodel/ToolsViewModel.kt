@@ -38,6 +38,8 @@ data class ToolsUiState(
     val totalSizeBytes: Long = 0L,
     val unknownArtistCount: Int = 0,
     val playerState: com.atlas.music.playback.PlayerUiState = com.atlas.music.playback.PlayerUiState(),
+    /** Current committed band gains (mB) — drives the Audio Studio manual EQ. */
+    val equalizerBands: List<Int> = emptyList(),
 )
 
 class ToolsViewModel : ViewModel() {
@@ -84,8 +86,14 @@ class ToolsViewModel : ViewModel() {
                     totalDurationMs = _state.value.totalDurationMs,
                     totalSizeBytes = _state.value.totalSizeBytes,
                     unknownArtistCount = _state.value.unknownArtistCount,
+                    equalizerBands = _state.value.equalizerBands,
                 )
             }.collect { _state.value = it }
+        }
+        viewModelScope.launch {
+            ServiceLocator.settings.equalizerBands.collect { bands ->
+                _state.value = _state.value.copy(equalizerBands = bands)
+            }
         }
         viewModelScope.launch {
             val repo = ServiceLocator.musicRepository
@@ -124,6 +132,7 @@ class ToolsViewModel : ViewModel() {
     fun setBreakMinutes(minutes: Int) = viewModelScope.launch { settingsRepo.setPomodoroBreak(minutes) }
     fun setSyncPlayback(enabled: Boolean) = viewModelScope.launch { settingsRepo.setPomodoroSync(enabled) }
     fun setSleepTimerEndOfTrack(enabled: Boolean) = viewModelScope.launch { settingsRepo.setSleepTimerEndOfTrack(enabled) }
+    fun setSleepTimerDefault(minutes: Int) = viewModelScope.launch { settingsRepo.setSleepTimerDefault(minutes) }
 
     fun startPomodoro() {
         val s = _state.value.settings
@@ -250,6 +259,28 @@ class ToolsViewModel : ViewModel() {
     fun setCrossfade(enabled: Boolean) = viewModelScope.launch { settingsRepo.setCrossfade(enabled) }
     fun setCrossfadeSeconds(seconds: Int) = viewModelScope.launch { settingsRepo.setCrossfadeSeconds(seconds) }
     fun setNormalization(enabled: Boolean) = viewModelScope.launch { settingsRepo.setNormalization(enabled) }
+    fun setBassBoost(enabled: Boolean) = viewModelScope.launch { settingsRepo.setBassBoost(enabled) }
+    fun setBassBoostStrength(percent: Int) = viewModelScope.launch { settingsRepo.setBassBoostStrength(percent) }
+    fun setLoudnessGainMb(gainMb: Int) = viewModelScope.launch { settingsRepo.setLoudnessGainMb(gainMb) }
+    /** Reset every audio knob: presets off, bass boost off, loudness off, crossfade off, speed 1×. */
+    fun resetAudio() = viewModelScope.launch {
+        settingsRepo.resetAudio()
+        _state.value = _state.value.copy(lastEvent = "EQ: Flat")
+    }
+    /** Manually set the 9-band curve (mB). Passing an empty list returns to the Flat state. */
+    fun setCustomBands(gainsMb: List<Int>) {
+        viewModelScope.launch {
+            if (gainsMb.isEmpty()) {
+                settingsRepo.setEqualizer(false)
+                settingsRepo.setEqualizerBands(emptyList())
+                _state.value = _state.value.copy(lastEvent = "EQ: Flat")
+            } else {
+                settingsRepo.setEqualizer(true)
+                settingsRepo.setEqualizerBands(gainsMb)
+                _state.value = _state.value.copy(lastEvent = "EQ: Custom")
+            }
+        }
+    }
 
     // ---- Player integration ----
     fun togglePlayPause() = ServiceLocator.playbackConnection.togglePlayPause()

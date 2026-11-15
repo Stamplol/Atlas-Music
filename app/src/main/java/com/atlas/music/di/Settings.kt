@@ -14,7 +14,9 @@ data class AtlasSettings(
     val crossfadeSeconds: Int = 6,
     val equalizerEnabled: Boolean = true,
     val bassBoostEnabled: Boolean = false,
+    val bassBoostStrength: Int = 60, // 0..100 — maps to BassBoost strength *10 (defaults to the previous 600)
     val normalizationEnabled: Boolean = false,
+    val loudnessGainMb: Int = 400,   // LoudnessEnhancer target gain in millibels (defaults to the previous 400)
     val playbackSpeed: Float = 1.0f,
     val sleepTimerDefaultMinutes: Int = 30,
     val excludedFolders: Set<String> = emptySet(),

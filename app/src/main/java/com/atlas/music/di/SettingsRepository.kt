@@ -33,7 +33,9 @@ class SettingsRepository(private val context: Context) {
         val CROSSFADE_SECS = intPreferencesKey("crossfade_seconds")
         val EQ = booleanPreferencesKey("equalizer_enabled")
         val BASS = booleanPreferencesKey("bass_boost_enabled")
+        val BASS_STRENGTH = intPreferencesKey("bass_boost_strength")
         val NORMALIZE = booleanPreferencesKey("normalization_enabled")
+        val LOUDNESS_GAIN_MB = intPreferencesKey("loudness_gain_mb")
         val SPEED = floatPreferencesKey("playback_speed")
         val SLEEP_MIN = intPreferencesKey("sleep_timer_default_minutes")
         val EXCLUDED = stringSetPreferencesKey("excluded_folders")
@@ -77,7 +79,9 @@ class SettingsRepository(private val context: Context) {
             crossfadeSeconds = (p[K.CROSSFADE_SECS] ?: 6).coerceIn(2, 12),
             equalizerEnabled = p[K.EQ] ?: true,
             bassBoostEnabled = p[K.BASS] ?: false,
+            bassBoostStrength = (p[K.BASS_STRENGTH] ?: 60).coerceIn(0, 100),
             normalizationEnabled = p[K.NORMALIZE] ?: false,
+            loudnessGainMb = (p[K.LOUDNESS_GAIN_MB] ?: 400).coerceIn(0, 1000),
             playbackSpeed = (p[K.SPEED] ?: 1.0f).coerceIn(0.5f, 2.0f),
             sleepTimerDefaultMinutes = (p[K.SLEEP_MIN] ?: 30).coerceIn(5, 180),
             excludedFolders = p[K.EXCLUDED] ?: emptySet(),
@@ -113,6 +117,18 @@ class SettingsRepository(private val context: Context) {
     suspend fun setEqualizer(enabled: Boolean) = store.edit { it[K.EQ] = enabled }
     suspend fun setBassBoost(enabled: Boolean) = store.edit { it[K.BASS] = enabled }
     suspend fun setNormalization(enabled: Boolean) = store.edit { it[K.NORMALIZE] = enabled }
+    suspend fun setBassBoostStrength(strength: Int) = store.edit { it[K.BASS_STRENGTH] = strength.coerceIn(0, 100) }
+    suspend fun setLoudnessGainMb(gainMb: Int) = store.edit { it[K.LOUDNESS_GAIN_MB] = gainMb.coerceIn(0, 1000) }
+    suspend fun resetAudio() = store.edit {
+        it[K.EQ] = false
+        it[K.BASS] = false
+        it[K.BASS_STRENGTH] = 60
+        it[K.NORMALIZE] = false
+        it[K.LOUDNESS_GAIN_MB] = 400
+        it[K.CROSSFADE] = false
+        it[K.SPEED] = 1.0f
+        it[K.EQ_BANDS] = ""
+    }
     suspend fun setPlaybackSpeed(speed: Float) = store.edit { it[K.SPEED] = speed.coerceIn(0.5f, 2.0f) }
     suspend fun setSleepTimerDefault(minutes: Int) = store.edit { it[K.SLEEP_MIN] = minutes.coerceIn(5, 180) }
     suspend fun setExcludedFolders(folders: Set<String>) = store.edit { it[K.EXCLUDED] = folders }
