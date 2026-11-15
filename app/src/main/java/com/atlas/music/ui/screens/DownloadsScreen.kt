@@ -193,14 +193,14 @@ private fun PasteCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.Link, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(8.dp))
-                Text("Paste a YouTube link", style = MaterialTheme.typography.titleMedium)
+                Text("Paste a YouTube or SoundCloud link", style = MaterialTheme.typography.titleMedium)
             }
             Spacer(Modifier.height(10.dp))
             OutlinedTextField(
                 value = state.url,
                 onValueChange = onUrlChange,
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Video, Short or playlist link…") },
+                placeholder = { Text("Video, Short, playlist or SoundCloud link…") },
                 singleLine = true,
                 trailingIcon = {
                     IconButton(onClick = {
@@ -239,6 +239,7 @@ private fun PreviewCard(
     onSetPlaylistMode: (Boolean) -> Unit,
 ) {
     val wholePlaylist = preview.playlistOnly || (preview.isPlaylist && state.playlistMode)
+    val blockedSoundCloud = preview.provider == "soundcloud" && !preview.playlistOnly && !com.atlas.music.util.SoundCloudGate.licenseAllowsDownload(preview.license)
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         shape = RoundedCornerShape(18.dp),
@@ -257,13 +258,17 @@ private fun PreviewCard(
                     Spacer(Modifier.height(4.dp))
                     Text(preview.uploader, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
-                        if (preview.playlistOnly) {
-                            "Playlist  ·  ${preview.playlistCount ?: preview.playlistEntries.size} videos"
-                        } else {
-                            Format.duration(preview.durationSec * 1000L) + (preview.playlistCount?.let { "  ·  playlist with $it videos" } ?: "")
+                        buildString {
+                            append(preview.provider.uppercase())
+                            if (preview.playlistOnly) {
+                                append("  ·  Set  ·  ${preview.playlistCount ?: preview.playlistEntries.size} tracks")
+                            } else {
+                                append("  ·  ${Format.duration(preview.durationSec * 1000L)}")
+                                preview.playlistCount?.let { append("  ·  playlist · $it videos") }
+                            }
                         },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
@@ -276,10 +281,11 @@ private fun PreviewCard(
                             style = MaterialTheme.typography.titleSmall,
                         )
                         Text(
-                            "${preview.playlistEntries.size} video${if (preview.playlistEntries.size == 1) "" else "s"} in \"${preview.playlistTitle.ifBlank { "playlist" }}\"",
+                            "${preview.playlistEntries.size} track${if (preview.playlistEntries.size == 1) "" else "s"} in \"${preview.playlistTitle.ifBlank { if (preview.provider == "soundcloud") "set" else "playlist" }}\"" +
+                                if (preview.provider == "soundcloud") "  ·  each checked at download" else "",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
@@ -319,18 +325,51 @@ private fun PreviewCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = state.consentAccepted, onCheckedChange = onConsentChange)
+            if (preview.provider == "soundcloud" && !preview.playlistOnly) {
+                Spacer(Modifier.height(2.dp))
+                val allowed = com.atlas.music.util.SoundCloudGate.licenseAllowsDownload(preview.license)
                 Text(
-                    "I own this content or have permission to download it.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(start = 4.dp),
+                    if (allowed) "Licensed for reuse (${com.atlas.music.util.SoundCloudGate.licenseLabel(preview.license)})" else "All rights reserved — not licensed for download",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (allowed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                 )
             }
-            Spacer(Modifier.height(4.dp))
-            Button(onClick = onStartDownload, enabled = state.consentAccepted, modifier = Modifier.fillMaxWidth()) {
-                Text(if (wholePlaylist) "Download all ${preview.playlistEntries.size} videos" else "Download audio")
+            Spacer(Modifier.height(8.dp))
+            if (blockedSoundCloud) {
+                // Hard gate — no consent checkbox can override this.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.error.copy(alpha = 0.10f))
+                        .padding(14.dp),
+                ) {
+                    Icon(Icons.Filled.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        "Atlas only downloads SoundCloud tracks the artist licensed for reuse (Creative Commons) or explicitly enabled. This one isn't.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                Button(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) {
+                    Text("Not licensed for download")
+                }
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = state.consentAccepted, onCheckedChange = onConsentChange)
+                    Text(
+                        "I own this content or have permission to download it.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Button(onClick = onStartDownload, enabled = state.consentAccepted, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (wholePlaylist) "Download all ${preview.playlistEntries.size} tracks" else "Download audio")
+                }
             }
         }
     }
@@ -480,7 +519,7 @@ private fun YtdlpCard(
 @Composable
 private fun LegalNote() {
     Text(
-        "Atlas Music downloads only what you're authorized to save. Don't use it to rip content you don't own, to bypass paywalls, or to strip DRM. The files you download stay on your device.",
+        "Atlas Music downloads only what you're authorized to save. Don't use it to rip content you don't own, to bypass paywalls, or to strip DRM. SoundCloud: Creative Commons-licensed tracks only — everything else is refused. The files you download stay on your device.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),

@@ -80,6 +80,9 @@ def _serialize(info, requested_format):
         "webpage_url": info.get("webpage_url"),
         "is_playlist": bool(info.get("entries")),
         "playlist_count": len(info.get("entries") or []) or None,
+        # SoundCloud exposes the artist's reuse grant here; YouTube reports all-rights-reserved.
+        # Atlas only downloads tracks licensed for redistribution (CC) or artist-enabled.
+        "license": info.get("license"),
         "formats": formats[:40],
     }
 
@@ -236,6 +239,14 @@ def list_playlist_entries(url):
             return json.dumps({"ok": True, "is_playlist": False, "count": 1,
                                "title": info.get("title"), "uploader": info.get("uploader"),
                                "entries": entries})
+        def _title_from_url(url):
+            try:
+                slug = [seg for seg in url.rstrip("/").split("/") if seg][-1]
+                pretty = slug.replace("-", " ").replace("_", " ").strip()
+                return pretty.title() if pretty else ""
+            except Exception:
+                return ""
+
         clean = []
         for e in info.get("entries") or []:
             if not e:
@@ -248,7 +259,8 @@ def list_playlist_entries(url):
             entry_url = e.get("url") or e.get("webpage_url") or (f"https://www.youtube.com/watch?v={e.get('id')}" if e.get("id") else None)
             if not entry_url:
                 continue
-            clean.append({"id": e.get("id"), "title": e.get("title") or "Unknown",
+            entry_title = e.get("title") or _title_from_url(entry_url) or "Track %d" % (len(clean) + 1)
+            clean.append({"id": e.get("id"), "title": entry_title,
                           "url": entry_url, "duration": e.get("duration"),
                           "thumbnail": e.get("thumbnail")})
         return json.dumps({"ok": True, "is_playlist": True, "count": len(clean),

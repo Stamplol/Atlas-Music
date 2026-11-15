@@ -31,6 +31,10 @@ data class YoutubePreview(
     val playlistOnly: Boolean = false,
     val playlistTitle: String = "",
     val playlistEntries: List<PlaylistEntryPreview> = emptyList(),
+    /** "youtube" | "soundcloud" — drives provider UI and the license gate. */
+    val provider: String = "youtube",
+    /** SoundCloud reuse grant (cc-by, all-rights-reserved…). Null for YouTube / sets / unknown. */
+    val license: String? = null,
 )
 
 data class PlaylistEntryPreview(
@@ -114,7 +118,7 @@ class DownloadManager(
             }
             return YoutubePreview(
                 ok = true,
-                title = playlistJson.optString("title").ifBlank { "YouTube playlist" },
+                title = playlistJson.optString("title").ifBlank { if (link.provider == "soundcloud") "SoundCloud set" else "YouTube playlist" },
                 uploader = playlistJson.optString("uploader").ifBlank { "Unknown uploader" },
                 thumbnailUrl = playlistEntries.firstOrNull()?.thumbnailUrl.orEmpty(),
                 playlistCount = playlistCount,
@@ -122,6 +126,7 @@ class DownloadManager(
                 playlistOnly = true,
                 playlistTitle = playlistJson.optString("title"),
                 playlistEntries = playlistEntries,
+                provider = link.provider,
             )
         }
 
@@ -146,6 +151,7 @@ class DownloadManager(
                 }
             }
         }
+        val previewProvider = link?.provider ?: "youtube"
         return YoutubePreview(
             ok = true,
             title = json.optString("title").ifBlank { "Untitled video" },
@@ -157,6 +163,8 @@ class DownloadManager(
             isPlaylist = playlistOk,
             playlistTitle = playlistJson?.optString("title").orEmpty(),
             playlistEntries = playlistEntries,
+            provider = previewProvider,
+            license = json.optString("license").takeIf { it.isNotBlank() },
         )
     }
 
@@ -306,6 +314,19 @@ class DownloadManager(
         if (!previewResult.optBoolean("ok")) {
             failTask(taskId, previewResult.optString("error", "Couldn't read this link."), onProgress)
             return
+        }
+
+        // SoundCloud is not YouTube: enrolled license or nothing, decided before any bytes move.
+        if (UrlValidator.providerOf(initial.url) == "soundcloud") {
+            val license = previewResult.optString("license").takeIf { it.isNotBlank() }
+            if (!com.atlas.music.util.SoundCloudGate.licenseAllowsDownload(license)) {
+                failTask(
+                    taskId,
+                    com.atlas.music.util.SoundCloudGate.BLOCKED_REASON + " (license: ${license ?: "absent"})",
+                    onProgress,
+                )
+                return
+            }
         }
 
         // 2) Download to a temp file first; interrupted downloads never appear as tracks.

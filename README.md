@@ -94,7 +94,9 @@ Data: `MediaStore / SAF → scan() → Room → Flow → Compose`. Playback: `UI
 
 **Tools** (own screen, back to Home) — one scroll, no tabs. **FOCUS LAB** hero: gold ring burns down the session (amber arc, ready/paused/running states), today's minutes + session count, 15/25/50 presets, custom durations, streak counter, duck-to-35% toggle, ledger of the last sessions. **SOUND**: EQ presets as live 9-band sparkbars (Flat bypasses the EQ entirely), playback speed, output picker. **SLEEP**: timer chips + countdown and a first-class "Stop at end of track" tile. **LIBRARY CARE**: `tracks · hours · size` mono line, gold panel when tracks lack tags (one tap fixes all), duplicates chevron. Dry maintenance footer (downloads, settings). Landscape → two-column table dashboard: PLAYING (5-button transport) / SOUND with EQ chips + speed / FOCUS with timer + end-of-track / LIBRARY.
 
-**Downloads** — paste a YouTube link (video, Short, or playlist) → Validate → preview → format (Opus/M4A) → consent → queue (`temp/` staging → verified move to `Music/Atlas Music` or SAF) → auto-import rescan. No transcoder (no FFmpeg). History, retry, duplicate detection. **Playlists**: paste a `/playlist?list=` link and Atlas flat-lists the entries (AuraFetch logic), shows title/count + the first five tracks, and enqueues every playable entry as its own task — private/deleted ones are skipped with a per-video summary (`N queued · M already in library`), not fatal. Watch URLs with a `list=` param offer the same toggle. Robustness: `ignoreerrors` + `skip_unavailable_fragments` + `windowsfilenames`, 4 concurrent fragments, 10 MiB chunks, 10 retries, format-unavailable falls back to `bestaudio/best`.
+**Downloads** — paste a YouTube or **SoundCloud** link (video, Short, playlist or track/set) → Validate → preview → format (Opus/M4A) → consent → queue (`temp/` staging → verified move to `Music/Atlas Music` or SAF) → auto-import rescan. No transcoder (no FFmpeg). History, retry, duplicate detection. **Playlists**: paste a `/playlist?list=` link and Atlas flat-lists the entries (AuraFetch logic), shows title/count + the first five tracks, and enqueues every playable entry as its own task — private/deleted ones are skipped with a per-video summary (`N queued · M already in library`), not fatal. Watch URLs with a `list=` param offer the same toggle. Robustness: `ignoreerrors` + `skip_unavailable_fragments` + `windowsfilenames`, 4 concurrent fragments, 10 MiB chunks, 10 retries, format-unavailable falls back to `bestaudio/best`.
+
+**SoundCloud** — same pipeline, with a hard legal gate: you can only download tracks the artist licensed for reuse (Creative Commons `cc-*` / `cc0`) — the API's `license` field is the permission signal, checked before any bytes move, enforced per-track in the queue for set batches (a blocked track fails with a reason, it never silently rips). YouTube content is unaffected by the gate. Verified against a real royalty-free catalog track (`cc-by`).
 
 **yt-dlp** — bundled `2025.10.22`; Check → PyPI wheel → SHA-256 vs PyPI JSON → stage under `filesDir/ytdlp-updates/` → import verify → rollback on fail. `Restore bundled` one tap. Updates only from official wheels.
 
@@ -127,7 +129,7 @@ No accounts, no telemetry SDK, no uploads of library/history. `READ_MEDIA_AUDIO`
 
 ## Legal
 
-Includes yt-dlp for **content you are authorized to download** only. No DRM/paywall bypass, no circumvention code. Comply with YouTube ToS and applicable copyright law. yt-dlp © its authors, Unlicense; bundled updates only from official PyPI wheels.
+Includes yt-dlp for **content you are authorized to download** only.  Comply with YouTube ToS and applicable copyright law. yt-dlp © its authors, Unlicense; bundled updates only from official PyPI wheels.
 
 ## Design
 

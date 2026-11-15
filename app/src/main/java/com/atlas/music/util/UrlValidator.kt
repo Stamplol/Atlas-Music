@@ -6,6 +6,10 @@ data class YoutubeLink(
     val videoId: String?,
     val playlistId: String?,
     val isPlaylist: Boolean,
+    /** "youtube" or "soundcloud" — drives the provider chip and the license gate. */
+    val provider: String = "youtube",
+    /** Optional private-set token from SoundCloud private set links (s-xxx). */
+    val token: String? = null,
 ) {
     val stableKey: String get() = videoId ?: playlistId ?: ""
 }
@@ -21,6 +25,11 @@ object UrlValidator {
         "youtube-nocookie.com", "www.youtube-nocookie.com",
     )
     private val SHORT_HOSTS = setOf("youtu.be", "www.youtu.be")
+    private val SC_HOSTS = setOf("soundcloud.com", "www.soundcloud.com", "m.soundcloud.com")
+    private val SC_TRACK = Regex("""^/([\w-]{1,100})/([\w-]{1,100})/?$""")
+    private val SC_SET = Regex("""^/([\w-]{1,100})/sets/([\w-]{1,100})(?:/(s-[\w-]{3,64}))?/?$""")
+    /** Reserved first path segments on SoundCloud — a track page never starts with these. */
+    private val SC_RESERVED = setOf("sets", "tracks", "albums", "likes", "reposts", "spotlight", "comments", "stations", "search")
 
     fun parse(raw: String): YoutubeLink? {
         val trimmed = raw.trim()
@@ -41,7 +50,35 @@ object UrlValidator {
 
         if (SHORT_HOSTS.contains(host)) {
             val id = path.trimStart('/').substringBefore('/')
-            if (VIDEO_ID.matches(id)) return YoutubeLink(id, null, isPlaylist = false)
+            if (VIDEO_ID.matches(id)) return YoutubeLink(id, null, isPlaylist = false, provider = "youtube")
+            return null
+        }
+        if (SC_HOSTS.contains(host)) {
+            val setMatch = SC_SET.find(path)
+            if (setMatch != null) {
+                val uploader = setMatch.groupValues[1]
+                val slug = setMatch.groupValues[2]
+                val token = setMatch.groupValues[3].ifBlank { null }
+                return YoutubeLink(
+                    videoId = null,
+                    playlistId = "scset:$uploader/$slug",
+                    isPlaylist = true,
+                    provider = "soundcloud",
+                    token = token,
+                )
+            }
+            val trackMatch = SC_TRACK.find(path)
+            if (trackMatch != null) {
+                val uploader = trackMatch.groupValues[1]
+                val title = trackMatch.groupValues[2]
+                if (uploader.lowercase() in SC_RESERVED) return null
+                return YoutubeLink(
+                    videoId = "sc:$uploader/$title",
+                    playlistId = null,
+                    isPlaylist = false,
+                    provider = "soundcloud",
+                )
+            }
             return null
         }
         if (!VIDEO_HOSTS.contains(host)) return null
@@ -76,6 +113,16 @@ object UrlValidator {
     fun canonicalUrl(raw: String): String? {
         val link = parse(raw) ?: return null
         return when {
+            link.provider == "soundcloud" && link.isPlaylist -> {
+                // stored as scset:{user}/{slug} — put the /sets/ segment back
+                val parts = link.playlistId?.removePrefix("scset:")?.split("/", limit = 2) ?: return null
+                if (parts.size != 2) return null
+                val token = link.token?.let { "/$it" } ?: ""
+                "https://soundcloud.com/${parts[0]}/sets/${parts[1]}$token"
+            }
+            link.provider == "soundcloud" -> {
+                "https://soundcloud.com/${link.videoId?.removePrefix("sc:") ?: return null}"
+            }
             link.videoId != null -> "https://www.youtube.com/watch?v=${link.videoId}"
             link.playlistId != null -> "https://www.youtube.com/playlist?list=${link.playlistId}"
             else -> null
@@ -85,7 +132,15 @@ object UrlValidator {
     /** Canonical playlist URL for batch listing (works for watch+list URLs too). */
     fun canonicalPlaylistUrl(raw: String): String? {
         val link = parse(raw) ?: return null
-        val playlistId = link.playlistId ?: return null
-        return "https://www.youtube.com/playlist?list=$playlistId"
+        return when {
+            link.provider == "soundcloud" && link.isPlaylist -> canonicalUrl(raw)
+            else -> {
+                val playlistId = link.playlistId ?: return null
+                "https://www.youtube.com/playlist?list=$playlistId"
+            }
+        }
     }
+
+    /** "youtube" | "soundcloud" — null for unrecognized links. */
+    fun providerOf(raw: String): String? = parse(raw)?.provider
 }

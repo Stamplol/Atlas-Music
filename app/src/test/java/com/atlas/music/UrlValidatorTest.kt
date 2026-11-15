@@ -123,3 +123,67 @@ class PlaylistLinkTest {
         assertNotNull(link)
     }
 }
+
+class SoundCloudLinkTest {
+    @Test fun acceptsTrackUrl() {
+        val link = UrlValidator.parse("https://soundcloud.com/sakuragirl_official/bubbles")
+        assertNotNull(link)
+        assertEquals("soundcloud", link!!.provider)
+        assertEquals("sc:sakuragirl_official/bubbles", link.stableKey)
+        assertFalse(link.isPlaylist)
+        assertEquals("https://soundcloud.com/sakuragirl_official/bubbles", UrlValidator.canonicalUrl("https://soundcloud.com/sakuragirl_official/bubbles"))
+    }
+
+    @Test fun acceptsWwwAndMobileHosts() {
+        listOf("www.soundcloud.com", "m.soundcloud.com").forEach { host ->
+            val link = UrlValidator.parse("https://$host/sakuragirl_official/bubbles")
+            assertNotNull(link)
+        }
+    }
+
+    @Test fun acceptsSetUrl() {
+        val link = UrlValidator.parse("https://soundcloud.com/trackistador/sets/lofi-chill-playlist")
+        assertNotNull(link)
+        assertTrue(link!!.isPlaylist)
+        assertEquals("scset:trackistador/lofi-chill-playlist", link.playlistId)
+        assertEquals("scset:trackistador/lofi-chill-playlist", link.stableKey)
+    }
+
+    @Test fun acceptsPrivateSetToken() {
+        val link = UrlValidator.parse("https://soundcloud.com/user/sets/my-set/s-abc123")
+        assertNotNull(link)
+        assertTrue(link!!.isPlaylist)
+        assertEquals("s-abc123", link.token)
+        assertEquals("https://soundcloud.com/user/sets/my-set/s-abc123", UrlValidator.canonicalUrl("https://soundcloud.com/user/sets/my-set/s-abc123"))
+    }
+
+    @Test fun rejectsEmbedPlayerAndGarbage() {
+        assertNull(UrlValidator.parse("https://w.soundcloud.com/player/?url=https://api.soundcloud.com/tracks/1"))
+        assertNull(UrlValidator.parse("https://soundcloud.com/"))
+        assertNull(UrlValidator.parse("https://soundcloud.com/onlyartist"))
+        assertNull(UrlValidator.parse("https://evil.com/sakuragirl_official/bubbles"))
+        assertNull(UrlValidator.parse("http://soundcloud.com/sakuragirl_official/bubbles"))
+        assertNull(UrlValidator.parse("https://soundcloud.com/sakuragirl_official/bubbles?x=<script>"))
+    }
+
+    @Test fun scKeysNeverCollideWithYoutube() {
+        val yt = UrlValidator.parse("https://www.youtube.com/watch?v=dQw4w9WgXcQ")!!
+        val sc = UrlValidator.parse("https://soundcloud.com/dQw4w9WgXcQ/dQw4w9WgXcQ")!!
+        assertFalse(yt.stableKey == sc.stableKey)
+    }
+
+    @Test fun providerOfWorks() {
+        assertEquals("youtube", UrlValidator.providerOf("https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+        assertEquals("soundcloud", UrlValidator.providerOf("https://soundcloud.com/sakuragirl_official/bubbles"))
+        assertNull(UrlValidator.providerOf("not a link"))
+    }
+
+    @Test fun gateAllowsCreativeCommonsBlocksReserved() {
+        for (cc in listOf("cc-by", "cc-by-sa", "cc-by-nc", "cc-by-nd", "cc-by-nc-sa", "cc-by-nc-nd", "cc0", "CC-BY-SA")) {
+            assertTrue("expected $cc to be allowed", com.atlas.music.util.SoundCloudGate.licenseAllowsDownload(cc))
+        }
+        for (reserved in listOf("all-rights-reserved", "All Rights Reserved", null, "", "license-free-ish")) {
+            assertFalse("expected $reserved to be blocked", com.atlas.music.util.SoundCloudGate.licenseAllowsDownload(reserved))
+        }
+    }
+}
