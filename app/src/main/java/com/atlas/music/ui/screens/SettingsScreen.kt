@@ -333,7 +333,12 @@ fun SettingsScreen(
         item {
             ListItem(
                 headlineContent = { Text("Excluded folders") },
-                supportingContent = { Text(if (settings.excludedFolders.isEmpty()) "None — everything is indexed" else settings.excludedFolders.joinToString()) },
+                supportingContent = {
+                    Text(
+                        (if (settings.excludedFolders.isEmpty()) "None — everything is indexed.\n" else settings.excludedFolders.joinToString(", ") + "\n") +
+                            "Atlas always skips: " + com.atlas.music.util.BuiltInExclusions.SUMMARY + ".",
+                    )
+                },
                 trailingContent = { TextButton(onClick = { showExcludedInput = true }) { Text("Add") } },
                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
             )

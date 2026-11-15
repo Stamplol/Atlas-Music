@@ -192,7 +192,7 @@ class MusicRepository(private val context: Context, private val db: AtlasDatabas
                     val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id).toString()
                     val relativePath = if (relPathIdx >= 0) c.getString(relPathIdx) else null
                     val folder = LibraryFolder.normalize(relativePath)
-                    if (LibraryFolder.isExcluded(folder, excludedFolders)) {
+                    if (LibraryFolder.isExcluded(folder, excludedFolders) || com.atlas.music.util.BuiltInExclusions.isBuiltInExcluded(folder)) {
                         skipped++
                         continue
                     }
@@ -351,7 +351,7 @@ class MusicRepository(private val context: Context, private val db: AtlasDatabas
                         val mime = child.type?.lowercase(Locale.ROOT)
                         if (!isAudioFile(name, mime)) continue
                         val folder = if (rel.isBlank()) LibraryFolder.normalize(root.name) else LibraryFolder.normalize(rel)
-                        if (LibraryFolder.isExcluded(folder, excludedFolders)) { skipped++; continue }
+                        if (LibraryFolder.isExcluded(folder, excludedFolders) || com.atlas.music.util.BuiltInExclusions.isBuiltInExcluded(folder)) { skipped++; continue }
                         val uriStr = child.uri.toString()
                         val size = child.length()
                         val lastModSec = if (child.lastModified() > 0) child.lastModified() / 1000 else 0L

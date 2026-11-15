@@ -82,7 +82,7 @@ Data: `MediaStore / SAF → scan() → Room → Flow → Compose`. Playback: `UI
 
 ## Features
 
-**Library** — MediaStore scan (`IS_MUSIC NULL`-inclusive), SAF custom folder (recursive, retriever per file), excluded folders, incremental rebuild, Songs/Albums/Artists/Genres/Folders/Playlists with live counts, ranked substring search (SQL `LIKE`, debounced), Smart Lists, duplicates by `title|artist|duration` fingerprint, track info sheet, default sort.
+**Library** — MediaStore scan (`IS_MUSIC NULL`-inclusive), SAF custom folder (recursive, retriever per file), excluded folders + built-in skip set (messaging/recorder/ringtones/DCIM/Movies/Pictures — MediaStore's IS_* flags are NULL too often), incremental rebuild, Songs/Albums/Artists/Genres/Folders/Playlists with live counts, ranked substring search (SQL `LIKE`, debounced), Smart Lists, duplicates by `title|artist|duration` fingerprint, track info sheet, default sort.
 
 **Playback** — gapless, optional boundary crossfade, shuffle/repeat, seek, speed 0.5–2×, EQ + BassBoost + LoudnessEnhancer on the player session, sleep timer, queue reorder/remove/clear, position+queue persisted (restores paused, never autoplays), headset/Bluetooth button handling, audio-focus + output routing (DAC/BT/speaker).
 
@@ -98,7 +98,7 @@ Data: `MediaStore / SAF → scan() → Room → Flow → Compose`. Playback: `UI
 
 **SoundCloud** — same pipeline, with a hard legal gate: you can only download tracks the artist licensed for reuse (Creative Commons `cc-*` / `cc0`) — the API's `license` field is the permission signal, checked before any bytes move, enforced per-track in the queue for set batches (a blocked track fails with a reason, it never silently rips). YouTube content is unaffected by the gate. Verified against a real royalty-free catalog track (`cc-by`).
 
-**yt-dlp** — bundled `2025.10.22`; Check → PyPI wheel → SHA-256 vs PyPI JSON → stage under `filesDir/ytdlp-updates/` → import verify → rollback on fail. `Restore bundled` one tap. Updates only from official wheels.
+**yt-dlp** — bundled `2025.10.22`; check is PyPI-first (`pypi.org/pypi/yt-dlp/json`) with GitHub `releases/latest` as fallback (GitHub's unauthenticated API caps at 60 req/h shared per IP — that was the 'can't reach GitHub' failure). Download stays PyPI-wheel + SHA-256 vs PyPI JSON → stage under `filesDir/ytdlp-updates/` → import verify → rollback on fail. `Restore bundled` one tap. Updates only from official wheels.
 
 **Themes / backgrounds** — Atlas Dark/Light + Dynamic Color + 10 me-when-music presets (Mocha, Latte, Gruvbox, Tokyo Night, Nord, Dracula, Kanagawa, Rosé Pine, Everforest, Oxocarbon). Covers: checksum-seeded, 12 variants (geo/rings/grid/diag/dunes/aurora/meridian/arcs/noise/spark/horizon/orbit). Live canvas behind Now Playing (port of `me-when-music` bg.js, morph skipped): conway/boids/wave/maze/sort/starfield/matrix/flow/lorenz/pendulum/plasma/langton/dunes. Density/speed/trails/react knobs, reduced-motion aware.
 

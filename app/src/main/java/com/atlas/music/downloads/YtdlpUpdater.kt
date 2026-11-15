@@ -56,31 +56,21 @@ class YtdlpUpdater(
         runCatching {
             val currentRaw = installedVersion()
             val current = YtdlpVersion.parse(currentRaw)
-            val request = Request.Builder()
-                .url("https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest")
-                .header("Accept", "application/vnd.github+json")
-                .header("User-Agent", "AtlasMusic/1.0 (Android)")
-                .build()
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) throw IllegalStateException("GitHub returned HTTP ${response.code}")
-                val body = response.body?.string() ?: throw IllegalStateException("Empty response from GitHub")
-                val json = JSONObject(body)
-                val tag = json.optString("tag_name")
-                val latest = YtdlpVersion.parse(tag) ?: throw IllegalStateException("Unparseable release tag: $tag")
-                UpdateCheck(
-                    currentVersion = currentRaw,
-                    latestVersion = latest.toString(),
-                    updateAvailable = current != null && latest > current,
-                    releasePageUrl = json.optString("html_url", "https://github.com/yt-dlp/yt-dlp/releases"),
-                )
-            }
+            val latestTag = fetchLatest() ?: throw IllegalStateException("Neither PyPI nor GitHub is reachable right now.")
+            val latest = YtdlpVersion.parse(latestTag.tag) ?: throw IllegalStateException("Unparseable release tag: ${latestTag.tag}")
+            UpdateCheck(
+                currentVersion = currentRaw,
+                latestVersion = latest.toString(),
+                updateAvailable = current != null && latest > current,
+                releasePageUrl = latestTag.pageUrl,
+            )
         }
     }
 
     /** Download + verify + activate the official wheel. Never throws. */
     suspend fun applyUpdate(): UpdateResult = withContext(Dispatchers.IO) {
         try {
-            val latestRaw = fetchLatestVersionTag() ?: return@withContext UpdateResult.Failed("Couldn't reach the yt-dlp release source. Check your connection and try again.")
+            val latestRaw = fetchLatest()?.tag ?: return@withContext UpdateResult.Failed("Couldn't reach the yt-dlp release source (PyPI and GitHub both offline). Check your connection and try again.")
             val latest = YtdlpVersion.parse(latestRaw) ?: return@withContext UpdateResult.Failed("Couldn't understand the latest yt-dlp version ($latestRaw).")
             val current = YtdlpVersion.parse(installedVersion())
             if (current != null && latest <= current) {
@@ -143,16 +133,33 @@ class YtdlpUpdater(
         true
     }
 
-    private fun fetchLatestVersionTag(): String? {
+    /** Latest version tag, PyPI first (same source as the wheel download, no auth/rate limit),
+     *  GitHub releases/latest as fallback for CDNs that mirror GitHub but not PyPI. */
+    private data class LatestTag(val tag: String, val pageUrl: String)
+
+    private fun fetchLatest(): LatestTag? = fetchPypiLatestVersionTag() ?: fetchGithubLatestVersionTag()
+
+    private fun fetchPypiLatestVersionTag(): LatestTag? {
+        val request = Request.Builder().url("https://pypi.org/pypi/yt-dlp/json").build()
+        return client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) return null
+            val json = JSONObject(response.body?.string() ?: return null)
+            val version = json.optJSONObject("info")?.optString("version")?.takeIf { it.isNotBlank() } ?: return null
+            LatestTag(version, "https://pypi.org/project/yt-dlp/")
+        }
+    }
+
+    private fun fetchGithubLatestVersionTag(): LatestTag? {
         val request = Request.Builder()
             .url("https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest")
             .header("Accept", "application/vnd.github+json")
             .header("User-Agent", "AtlasMusic/1.0 (Android)")
             .build()
-        client.newCall(request).execute().use { response ->
+        return client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) return null
             val body = response.body?.string() ?: return null
-            return JSONObject(body).optString("tag_name").takeIf { it.isNotBlank() }
+            val tag = JSONObject(body).optString("tag_name").takeIf { it.isNotBlank() } ?: return null
+            LatestTag(tag, JSONObject(body).optString("html_url", "https://github.com/yt-dlp/yt-dlp/releases"))
         }
     }
 
