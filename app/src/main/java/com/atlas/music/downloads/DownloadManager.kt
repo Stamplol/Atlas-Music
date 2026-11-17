@@ -50,6 +50,23 @@ data class PlaylistEnqueueResult(
     val failed: Int,
 )
 
+data class SearchResultItem(
+    val id: String,
+    val title: String,
+    val uploader: String,
+    val durationSec: Int,
+    val thumbnailUrl: String,
+    val url: String,
+)
+
+data class SearchResult(
+    val ok: Boolean,
+    val provider: String = "",
+    val query: String = "",
+    val entries: List<SearchResultItem> = emptyList(),
+    val error: String? = null,
+)
+
 data class FormatOption(
     val formatId: String,
     val ext: String,
@@ -75,6 +92,9 @@ class DownloadManager(
     val completedCount: Flow<Int> = dao.observeCompletedCount()
 
     fun isDownloaderAvailable(): Boolean = pythonBridge.isAvailable()
+
+    /** True when this text is a complete http(s) link, false for a bare query. */
+    fun isCompleteUrl(raw: String): Boolean = raw.startsWith("http://", ignoreCase = true) || raw.startsWith("https://", ignoreCase = true)
 
     fun installedYtdlpVersion(): String {
         val json = pythonBridge.ytdlpVersion()
@@ -166,6 +186,42 @@ class DownloadManager(
             provider = previewProvider,
             license = json.optString("license").takeIf { it.isNotBlank() },
         )
+    }
+
+    /**
+     * In-app search across YouTube / SoundCloud. Results are flat entries — tapping
+     * one converts it into an enqueue through the normal pipeline (duplicate detection,
+     * consent, per-track license gate for SoundCloud, history, retry).
+     */
+    fun search(query: String, provider: String, limit: Int = 8): SearchResult {
+        val clean = query.trim().takeIf { it.isNotBlank() }
+            ?: return SearchResult(false, error = "Type something to search.")
+        if (provider != "youtube" && provider != "soundcloud") {
+            return SearchResult(false, error = "Choose YouTube or SoundCloud first.")
+        }
+        val json = pythonBridge.search(clean, provider, limit)
+        if (!json.optBoolean("ok")) {
+            return SearchResult(false, provider = provider, query = clean, error = json.optString("error", "Search failed — check your connection.").takeIf { it.isNotBlank() })
+        }
+        val entries = buildList {
+            val arr = json.optJSONArray("entries") ?: return@buildList
+            for (i in 0 until arr.length()) {
+                val e = arr.getJSONObject(i)
+                val url = e.optString("url")
+                if (url.isBlank()) continue
+                add(
+                    SearchResultItem(
+                        id = e.optString("id").ifBlank { url },
+                        title = e.optString("title").ifBlank { "Unknown" },
+                        uploader = e.optString("uploader").ifBlank { "Unknown artist" },
+                        durationSec = e.optInt("duration", 0),
+                        thumbnailUrl = e.optString("thumbnail"),
+                        url = url,
+                    )
+                )
+            }
+        }
+        return SearchResult(ok = true, provider = provider, query = clean, entries = entries)
     }
 
     /** Enqueue a validated link. Returns the task id, or throws with a user-readable message. */

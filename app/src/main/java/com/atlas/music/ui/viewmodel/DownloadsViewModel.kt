@@ -22,6 +22,10 @@ data class DownloadsUiState(
     val previewError: String? = null,
     val format: String = "opus",
     val tasks: List<DownloadTaskEntity> = emptyList(),
+    val searchProvider: String = "youtube",
+    val searching: Boolean = false,
+    val searchError: String? = null,
+    val searchResults: List<com.atlas.music.downloads.SearchResultItem> = emptyList(),
     val ytdlpVersion: String = "…",
     val ytdlpAvailable: Boolean = true,
     val checkingUpdate: Boolean = false,
@@ -48,7 +52,48 @@ class DownloadsViewModel : ViewModel() {
     }
 
     fun onUrlChange(value: String) {
-        _state.value = _state.value.copy(url = value, preview = null, previewError = null, enqueueMessage = null)
+        _state.value = _state.value.copy(url = value, preview = null, previewError = null, enqueueMessage = null, searchError = null)
+        // Typing clears stale results, but never while a search is in flight
+        if (!_state.value.searching) _state.value = _state.value.copy(searchResults = emptyList())
+    }
+
+    fun setSearchProvider(provider: String) {
+        _state.value = _state.value.copy(searchProvider = provider, searchResults = emptyList(), searchError = null)
+    }
+
+    /** Search (plain query) or analyze-link (http(s) URL) — same field, same button, magic by content. */
+    fun submitSearchOrUrl() {
+        val raw = _state.value.url.trim()
+        if (raw.startsWith("http://", ignoreCase = true) || raw.startsWith("https://", ignoreCase = true)) {
+            fetchPreview()
+            return
+        }
+        if (raw.isBlank()) { _state.value = _state.value.copy(searchError = "Type an artist/song, or paste a link."); return }
+        _state.value = _state.value.copy(searching = true, searchError = null, searchResults = emptyList(), previewError = null, preview = null)
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) { manager.search(raw, _state.value.searchProvider) }
+            _state.value = _state.value.copy(
+                searching = false,
+                searchError = result.error,
+                searchResults = result.entries,
+            )
+        }
+    }
+
+    fun startDownloadFromResult(item: com.atlas.music.downloads.SearchResultItem) {
+        val s = _state.value
+        if (!s.consentAccepted) {
+            _state.value = s.copy(searchError = "Please confirm you're authorized to download this content.")
+            return
+        }
+        viewModelScope.launch {
+            runCatching { manager.enqueue(item.url, item.title, item.uploader, item.thumbnailUrl, s.format) }
+                .onSuccess {
+                    _state.value = _state.value.copy(enqueueMessage = "Queued “${item.title.take(60)}”.", searchError = null)
+                }.onFailure { e ->
+                    _state.value = _state.value.copy(searchError = e.message ?: "Couldn't queue ${item.title.take(40)}.")
+                }
+        }
     }
 
     fun setFormat(format: String) { _state.value = _state.value.copy(format = format) }

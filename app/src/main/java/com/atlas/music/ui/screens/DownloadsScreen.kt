@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Refresh
@@ -75,6 +76,9 @@ fun DownloadsScreen(
     state: DownloadsUiState,
     onUrlChange: (String) -> Unit,
     onFetchPreview: () -> Unit,
+    onSetSearchProvider: (String) -> Unit,
+    onSubmitSearchOrUrl: () -> Unit,
+    onDownloadFromResult: (com.atlas.music.downloads.SearchResultItem) -> Unit,
     onSetFormat: (String) -> Unit,
     onConsentChange: (Boolean) -> Unit,
     onStartDownload: () -> Unit,
@@ -105,7 +109,12 @@ fun DownloadsScreen(
             return@LazyColumn
         }
 
-        item { PasteCard(context = context, state = state, onUrlChange = onUrlChange, onFetchPreview = onFetchPreview) }
+        item { PasteCard(context = context, state = state, onUrlChange = onUrlChange, onFetchPreview = onSubmitSearchOrUrl, onSetSearchProvider = onSetSearchProvider) }
+        state.searchError?.let { error -> item { ErrorBanner(error) } }
+
+        state.searchResults.takeIf { it.isNotEmpty() && state.url.trim().isNotBlank() && !state.url.startsWith("http", ignoreCase = true) }?.let { results ->
+            item { SearchResultsCard(results = results, state = state, onDownload = onDownloadFromResult, onConsentChange = onConsentChange) }
+        }
 
         state.previewError?.let { error -> item { ErrorBanner(error) } }
         state.enqueueMessage?.let { message ->
@@ -184,7 +193,9 @@ private fun PasteCard(
     state: DownloadsUiState,
     onUrlChange: (String) -> Unit,
     onFetchPreview: () -> Unit,
+    onSetSearchProvider: (String) -> Unit,
 ) {
+    val isUrl = state.url.trim().startsWith("http://", ignoreCase = true) || state.url.trim().startsWith("https://", ignoreCase = true)
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -197,11 +208,16 @@ private fun PasteCard(
                 Text("Paste a YouTube or SoundCloud link", style = MaterialTheme.typography.titleMedium)
             }
             Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = state.searchProvider == "youtube", onClick = { onSetSearchProvider("youtube") }, label = { Text("YouTube") })
+                FilterChip(selected = state.searchProvider == "soundcloud", onClick = { onSetSearchProvider("soundcloud") }, label = { Text("SoundCloud") })
+            }
+            Spacer(Modifier.height(10.dp))
             OutlinedTextField(
                 value = state.url,
                 onValueChange = onUrlChange,
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Video, Short, playlist or SoundCloud link…") },
+                placeholder = { Text("Link — or a song to search") },
                 singleLine = true,
                 trailingIcon = {
                     AtlasIconButton(text = "Paste from clipboard", onClick = {
@@ -215,17 +231,92 @@ private fun PasteCard(
             Spacer(Modifier.height(10.dp))
             Button(
                 onClick = onFetchPreview,
-                enabled = state.url.isNotBlank() && !state.previewLoading,
+                enabled = state.url.isNotBlank() && !state.previewLoading && !state.searching,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 if (state.previewLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
                     Spacer(Modifier.width(10.dp))
                     Text("Reading link…")
+                } else if (state.searching) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                    Spacer(Modifier.width(10.dp))
+                    Text("Searching ${state.searchProvider.replaceFirstChar { it.uppercase() }}…")
                 } else {
-                    Text("Analyze link")
+                    Text(if (isUrl) "Analyze link" else "Search")
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SearchResultsCard(
+    results: List<com.atlas.music.downloads.SearchResultItem>,
+    state: DownloadsUiState,
+    onDownload: (com.atlas.music.downloads.SearchResultItem) -> Unit,
+    onConsentChange: (Boolean) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(18.dp),
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Text(
+                "Search results · ${state.searchProvider.replaceFirstChar { it.uppercase() }}",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = state.consentAccepted, onCheckedChange = onConsentChange)
+                Text(
+                    "I own this content or have permission to download it.",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(start = 6.dp),
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            results.forEach { item ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .padding(vertical = 6.dp, horizontal = 4.dp),
+                ) {
+                    coil.compose.AsyncImage(
+                        model = item.thumbnailUrl.takeIf { it.isNotBlank() },
+                        contentDescription = null,
+                        modifier = Modifier.size(width = 64.dp, height = 44.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentScale = ContentScale.Crop,
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(item.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            item.uploader + if (item.durationSec > 0) "  ·  ${Format.duration(item.durationSec * 1000L)}" else "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    IconButton(onClick = { onDownload(item) }) {
+                        Icon(Icons.Filled.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Tapping a download sends the track through the normal queue.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

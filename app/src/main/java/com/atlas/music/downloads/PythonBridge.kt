@@ -65,6 +65,9 @@ class PythonBridge(private val appContext: Context) {
     /** Flat-list a playlist's playable entries. Pure network metadata; never downloads media. */
     fun listPlaylistEntries(url: String): JSONObject = call("list_playlist_entries", url)
 
+    /** Search YouTube / SoundCloud for a query. Flat entries only, never downloads. */
+    fun search(query: String, provider: String, limit: Int = 8): JSONObject = call("search", query, provider, limit.toString())
+
     fun download(
         url: String,
         outputDir: String,

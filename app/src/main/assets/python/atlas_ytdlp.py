@@ -210,6 +210,72 @@ def download(url, out_dir, format_pref, progress_callback=None, cancel_check=Non
         return json.dumps({"ok": False, "cancelled": cancelled, "error": message[:400]})
 
 
+def search(query, provider, limit=6):
+    """In-app search across YouTube / SoundCloud — returns flat entries only.
+
+    Query never leaves yt-dlp's own search-key parsing; it is never executed and
+    never joined into a raw URL string. Empty/None-safe.
+    """
+    clean = (query or "").strip()[:120]
+    if not clean:
+        return json.dumps({"ok": False, "error": "Type something to search."})
+    try:
+        n = max(1, min(int(limit or 6), 10))
+    except (TypeError, ValueError):
+        n = 6
+    if provider == "youtube":
+        key = f"ytsearch{n}:{clean}"
+    elif provider == "soundcloud":
+        key = f"scsearch{n}:{clean}"
+    else:
+        return json.dumps({"ok": False, "error": "Choose YouTube or SoundCloud first."})
+    try:
+        yt_dlp = _import_ytdlp()
+        opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "ignoreerrors": True,
+            "socket_timeout": 15,
+            "retries": 1,
+            "extract_flat": "in_playlist",
+            "playlistend": n,
+        }
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(key, download=False)
+    except Exception as exc:
+        msg = str(exc) or "Search failed"
+        return json.dumps({"ok": False, "error": msg[:300]})
+
+    entries = []
+    for e in (info or {}).get("entries") or []:
+        if not e:
+            continue
+        url = e.get("webpage_url") or e.get("url")
+        vid_id = e.get("id")
+        if not url and vid_id and provider == "youtube":
+            url = f"https://www.youtube.com/watch?v={vid_id}"
+        if not url:
+            continue
+        thumbs = e.get("thumbnails") or []
+        thumb = None
+        if isinstance(thumbs, list) and thumbs:
+            try:
+                thumb = max(thumbs, key=lambda t: (t.get("width") or 0)).get("url")
+            except Exception:
+                thumb = thumbs[-1].get("url") if isinstance(thumbs[-1], dict) else None
+        if not thumb:
+            thumb = e.get("thumbnail")
+
+        entries.append({
+            "id": str(vid_id or url),
+            "title": e.get("title") or "Unknown",
+            "uploader": e.get("uploader") or e.get("channel") or "Unknown artist",
+            "duration": e.get("duration"),
+            "thumbnail": thumb,
+            "url": url,
+        })
+    return json.dumps({"ok": True, "provider": provider, "query": clean, "entries": entries})
+
 def list_playlist_entries(url):
     """List videos in a YouTube playlist (flat). Never downloads media.
 
