@@ -34,7 +34,9 @@ class PlaylistDetailViewModel(private val playlistId: Long) : ViewModel() {
             }
         }
         viewModelScope.launch {
-            _state.value = _state.value.copy(playlist = ServiceLocator.database.playlistDao().byId(playlistId))
+            ServiceLocator.database.playlistDao().observeById(playlistId).collect { playlist ->
+                _state.value = _state.value.copy(playlist = playlist)
+            }
         }
     }
 

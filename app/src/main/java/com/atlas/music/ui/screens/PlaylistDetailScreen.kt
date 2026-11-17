@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -12,7 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Delete
@@ -48,6 +49,7 @@ fun PlaylistDetailScreen(
     viewModel: com.atlas.music.ui.viewmodel.PlaylistDetailViewModel,
     onBack: () -> Unit,
     onPlayAll: (List<com.atlas.music.data.db.TrackEntity>) -> Unit,
+    onPlayAt: (List<com.atlas.music.data.db.TrackEntity>, Int) -> Unit,
     onToggleFavorite: (com.atlas.music.data.db.TrackEntity) -> Unit,
     onAddToPlaylist: (com.atlas.music.data.db.TrackEntity) -> Unit,
     onShowInfo: (com.atlas.music.data.db.TrackEntity) -> Unit,
@@ -71,7 +73,7 @@ fun PlaylistDetailScreen(
                 }
             },
             navigationIcon = {
-                AtlasIconButton(text = "Back", onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") }
+                AtlasIconButton(text = "Back", onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
             },
             actions = {
                 AtlasIconButton(text = "Add tracks", onClick = { showPicker = true }) { Icon(Icons.Filled.Add, contentDescription = "Add tracks") }
@@ -87,49 +89,65 @@ fun PlaylistDetailScreen(
         if (state.loaded && state.tracks.isEmpty()) {
             EmptyState(
                 title = "Nothing in this playlist yet",
-                body = "Long-press any track and choose “Add to playlist”.",
+                body = "Tap + above or long-press any track and choose “Add to playlist”.",
             )
-            return
-        }
-        LazyColumn(contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 120.dp)) {
-            itemsIndexed(state.tracks, key = { index, track -> "$index-${track.id}" }) { index, track ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "%02d".format(index + 1),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 8.dp),
-                    )
-                    com.atlas.music.ui.components.TrackCoverArt(track = track, contentDescription = null, size = 44.dp, cornerRadius = 8.dp, showStrip = false)
-                    androidx.compose.foundation.layout.Spacer(Modifier.size(12.dp))
-                    androidx.compose.foundation.layout.Column(
-                        modifier = Modifier.weight(1f),
+        } else {
+            LazyColumn(
+                modifier = Modifier.navigationBarsPadding(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 120.dp),
+            ) {
+                itemsIndexed(state.tracks, key = { index, track -> "$index-${track.id}" }) { index, track ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onPlayAt(state.tracks, index) }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(track.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            "${track.artist}  ·  ${Format.duration(track.durationMs)}",
+                            "%02d".format(index + 1),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(end = 8.dp),
                         )
-                    }
-                    Column {
-                        AtlasIconButton(text = "{ viewModel.moveTrack(track.id, (index - 1).coerceAtLeast(0)) }, modifier = Modifier.size(32.dp)", onClick = { viewModel.moveTrack(track.id, (index - 1).coerceAtLeast(0)) }, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Filled.ArrowUpward, contentDescription = "Move up", modifier = Modifier.size(16.dp))
+                        com.atlas.music.ui.components.TrackCoverArt(track = track, contentDescription = null, size = 44.dp, cornerRadius = 8.dp, showStrip = false)
+                        androidx.compose.foundation.layout.Spacer(Modifier.size(12.dp))
+                        androidx.compose.foundation.layout.Column(
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(track.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                "${track.artist}  ·  ${Format.duration(track.durationMs)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
-                        AtlasIconButton(text = "{ viewModel.moveTrack(track.id, (index + 1).coerceAtMost(state.tracks.lastIndex)) }, modifier = Modifier.size(32.dp)", onClick = { viewModel.moveTrack(track.id, (index + 1).coerceAtMost(state.tracks.lastIndex)) }, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Filled.ArrowDownward, contentDescription = "Move down", modifier = Modifier.size(16.dp))
+                        Column {
+                            AtlasIconButton(
+                                text = "Move up",
+                                onClick = { viewModel.moveTrack(track.id, (index - 1).coerceAtLeast(0)) },
+                                enabled = index > 0,
+                                modifier = Modifier.size(36.dp),
+                            ) {
+                                Icon(Icons.Filled.ArrowUpward, contentDescription = "Move up", modifier = Modifier.size(18.dp))
+                            }
+                            AtlasIconButton(
+                                text = "Move down",
+                                onClick = { viewModel.moveTrack(track.id, (index + 1).coerceAtMost(state.tracks.lastIndex)) },
+                                enabled = index < state.tracks.lastIndex,
+                                modifier = Modifier.size(36.dp),
+                            ) {
+                                Icon(Icons.Filled.ArrowDownward, contentDescription = "Move down", modifier = Modifier.size(18.dp))
+                            }
                         }
-                    }
-                    AtlasIconButton(text = "Edit tags", onClick = { onEditTags(track) }) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Edit tags", modifier = Modifier.size(18.dp))
-                    }
-                    AtlasIconButton(text = "{ viewModel.removeTrack(track) }", onClick = { viewModel.removeTrack(track) }) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Remove from playlist", modifier = Modifier.size(18.dp))
+                        AtlasIconButton(text = "Edit tags", onClick = { onEditTags(track) }) {
+                            Icon(Icons.Filled.Edit, contentDescription = "Edit tags", modifier = Modifier.size(18.dp))
+                        }
+                        AtlasIconButton(text = "Remove from playlist", onClick = { viewModel.removeTrack(track) }) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Remove from playlist", modifier = Modifier.size(18.dp))
+                        }
                     }
                 }
             }
@@ -162,18 +180,17 @@ fun PlaylistDetailScreen(
             },
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
         )
+    }
 
-
-        if (showPicker) {
-            AddTracksDialog(
-                onDismiss = { showPicker = false },
-                existingIds = state.tracks.map { it.id }.toSet(),
-                onAdd = { ids ->
-                    viewModel.addTracks(ids)
-                    showPicker = false
-                },
-            )
-        }
+    if (showPicker) {
+        AddTracksDialog(
+            onDismiss = { showPicker = false },
+            existingIds = state.tracks.map { it.id }.toSet(),
+            onAdd = { ids ->
+                viewModel.addTracks(ids)
+                showPicker = false
+            },
+        )
     }
 }
 

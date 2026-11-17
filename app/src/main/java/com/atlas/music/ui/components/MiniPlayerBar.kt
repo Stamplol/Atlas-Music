@@ -34,8 +34,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.atlas.music.data.db.TrackEntity
+import com.atlas.music.di.ServiceLocator
 import com.atlas.music.util.CoverArtGenerator
 import com.atlas.music.util.ProceduralCoverArt
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -64,36 +68,49 @@ fun MiniPlayerBar(
                 .padding(horizontal = 12.dp),
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
         ) {
-            val artError = remember(state.artworkUri) { androidx.compose.runtime.mutableStateOf(false) }
-            val seed = remember(state.title, state.artist, state.artworkUri) {
-                CoverArtGenerator.hashStr(state.title + "|" + state.artist + "|" + (state.artworkUri?.toString() ?: ""))
+            val currentTrack by produceState<TrackEntity?>(null, state.currentTrackId) {
+                value = state.currentTrackId?.let { ServiceLocator.musicRepository.getTrack(it) }
             }
-            if (state.artworkUri != null && !artError.value) {
-                AsyncImage(
-                    model = state.artworkUri,
+            if (currentTrack != null) {
+                TrackCoverArt(
+                    track = currentTrack!!,
                     contentDescription = null,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentScale = ContentScale.Crop,
-                    onError = { artError.value = true },
-                )
-            } else {
-                ProceduralCoverArt(
-                    seed = seed,
-                    title = state.title,
-                    ext = "mp3",
-                    sizeBytes = 0L,
-                    modifier = Modifier.size(44.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp)),
+                    size = 44.dp,
+                    cornerRadius = 8.dp,
                     showStrip = false,
                 )
+            } else {
+                val artError = remember(state.artworkUri) { mutableStateOf(false) }
+                val seed = remember(state.title, state.artist, state.artworkUri) {
+                    CoverArtGenerator.hashStr(state.title + "|" + state.artist + "|" + (state.artworkUri?.toString() ?: ""))
+                }
+                if (state.artworkUri != null && !artError.value) {
+                    AsyncImage(
+                        model = state.artworkUri,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentScale = ContentScale.Crop,
+                        onError = { artError.value = true },
+                    )
+                } else {
+                    ProceduralCoverArt(
+                        seed = seed,
+                        title = state.title,
+                        ext = "mp3",
+                        sizeBytes = 0L,
+                        modifier = Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)),
+                        showStrip = false,
+                    )
+                }
             }
             Spacer(Modifier.width(12.dp))
             androidx.compose.foundation.layout.Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = state.title.ifBlank { "Unknown title" },
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -105,7 +122,10 @@ fun MiniPlayerBar(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            AtlasIconButton(text = "OnTogglePlayPause", onClick = onTogglePlayPause) {
+            AtlasIconButton(
+                text = if (state.isPlaying) "Pause" else "Play",
+                onClick = onTogglePlayPause,
+            ) {
                 Icon(
                     imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                     contentDescription = if (state.isPlaying) "Pause" else "Play",
@@ -130,6 +150,7 @@ fun MiniPlayerBar(
                 modifier = Modifier
                     .fillMaxWidth(progress.coerceIn(0f, 1f))
                     .height(3.dp)
+                    .clip(RoundedCornerShape(topEnd = 2.dp, bottomEnd = 2.dp))
                     .background(MaterialTheme.colorScheme.primary),
             )
         }

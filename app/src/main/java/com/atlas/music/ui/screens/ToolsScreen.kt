@@ -15,10 +15,16 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import com.atlas.music.ui.components.AtlasIconButton
+import com.atlas.music.ui.components.TrackCoverArt
+import com.atlas.music.data.db.TrackEntity
+import com.atlas.music.di.ServiceLocator
+import androidx.compose.runtime.produceState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -77,11 +83,12 @@ fun ToolsScreen(
     onOpenDuplicates: () -> Unit,
     onOpenDownloads: () -> Unit,
     onOpenSettings: () -> Unit,
+    initialPage: ToolPage = ToolPage.HUB,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
-    var page by remember { mutableStateOf(ToolPage.HUB) }
+    var page by remember(initialPage) { mutableStateOf(initialPage) }
     var outputs by remember { mutableStateOf(AudioOutput.listOutputs(context)) }
     var showOutputPicker by remember { mutableStateOf(false) }
     var preferredDeviceId by remember { mutableStateOf<Int?>(null) }
@@ -104,7 +111,7 @@ fun ToolsScreen(
 
     val title = when (page) {
         ToolPage.HUB -> "Tools"
-        ToolPage.AUDIO -> "Audio Studio"
+        ToolPage.AUDIO -> "Sound Studio"
         ToolPage.FOCUS -> "Focus"
         ToolPage.SLEEP -> "Sleep"
         ToolPage.LIBRARY -> "Library care"
@@ -114,7 +121,10 @@ fun ToolsScreen(
         TopAppBar(
             title = { Text(title, fontWeight = FontWeight.ExtraBold) },
             navigationIcon = {
-                IconButton(onClick = { if (page == ToolPage.HUB) onExit() else page = ToolPage.HUB }) {
+                AtlasIconButton(
+                    text = if (page == ToolPage.HUB) "Back to music" else "Back to tools",
+                    onClick = { if (page == ToolPage.HUB) onExit() else page = ToolPage.HUB },
+                ) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = if (page == ToolPage.HUB) "Back to music" else "Back to tools")
                 }
             },
@@ -135,7 +145,7 @@ fun ToolsScreen(
                 modifier = Modifier.weight(1f),
             )
         } else {
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth().navigationBarsPadding()) {
                 when (page) {
                     ToolPage.AUDIO -> AudioStudioPage(state = state, viewModel = viewModel, outputLabel = outputLabel, onShowOutputPicker = { showOutputPicker = true })
                     ToolPage.FOCUS -> FocusPage(state = state, viewModel = viewModel)
@@ -166,21 +176,34 @@ private fun PlayerStrip(
 ) {
     val player = state.playerState
     val fraction = if (player.durationMs > 0) (player.positionMs.toFloat() / player.durationMs.toFloat()).coerceIn(0f, 1f) else 0f
+    val currentTrack by produceState<TrackEntity?>(null, player.currentTrackId) {
+        value = player.currentTrackId?.let { ServiceLocator.musicRepository.getTrack(it) }
+    }
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(22.dp),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).clickable(onClick = onOpenNowPlaying),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).clip(RoundedCornerShape(22.dp)).clickable(onClick = onOpenNowPlaying),
     ) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-                Box(
-                    modifier = Modifier.size(46.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (player.currentTrackId != null) {
-                        Text(player.title.firstOrNull()?.uppercase() ?: "-", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
-                    } else {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (currentTrack != null) {
+                    TrackCoverArt(
+                        track = currentTrack!!,
+                        contentDescription = null,
+                        size = 46.dp,
+                        cornerRadius = 12.dp,
+                        showStrip = false,
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier.size(46.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (player.currentTrackId != null) {
+                            Text(player.title.firstOrNull()?.uppercase() ?: "-", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+                        } else {
+                            Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
                 Spacer(Modifier.width(12.dp))
@@ -188,20 +211,20 @@ private fun PlayerStrip(
                     Text(player.title.ifBlank { "Nothing playing" }, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(player.artist.ifBlank { "Tap to browse your library" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                IconButton(onClick = viewModel::togglePlayPause) {
+                AtlasIconButton(text = if (state.isPlaying) "Pause" else "Play", onClick = viewModel::togglePlayPause) {
                     Icon(
                         if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                         contentDescription = if (state.isPlaying) "Pause" else "Play",
                         tint = MaterialTheme.colorScheme.primary,
                     )
                 }
-                IconButton(onClick = onOpenQueue) {
+                AtlasIconButton(text = "Queue", onClick = onOpenQueue) {
                     Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Queue", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             if (player.durationMs > 0) {
                 Box(modifier = Modifier.fillMaxWidth().height(3.dp).background(MaterialTheme.colorScheme.surfaceVariant)) {
-                    Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction).background(MaterialTheme.colorScheme.primary))
+                    Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction).clip(RoundedCornerShape(topEnd = 2.dp, bottomEnd = 2.dp)).background(MaterialTheme.colorScheme.primary))
                 }
             }
         }

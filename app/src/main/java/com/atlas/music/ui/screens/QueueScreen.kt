@@ -1,10 +1,12 @@
 package com.atlas.music.ui.screens
 
 import com.atlas.music.ui.components.AtlasIconButton
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -85,63 +87,82 @@ fun QueueScreen(
                 title = "Queue is empty",
                 body = "Play something and it will show up here.",
             )
-            return
-        }
-        val totalMs = tracks.sumOf { it.durationMs }
-        Text(
-            "Total: ${Format.totalDuration(totalMs)}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-        )
-        LazyColumn(contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 120.dp)) {
-            itemsIndexed(tracks, key = { _, track -> track.id }) { index, track ->
-                val isCurrent = track.id == currentTrackId
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "%02d".format(index + 1),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.width(28.dp),
-                    )
-                    com.atlas.music.ui.components.TrackCoverArt(track = track, contentDescription = null, size = 44.dp, cornerRadius = 8.dp, showStrip = false)
-                    androidx.compose.foundation.layout.Spacer(Modifier.size(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
+        } else {
+            val totalMs = tracks.sumOf { it.durationMs }
+            Text(
+                "Total: ${Format.totalDuration(totalMs)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+            LazyColumn(
+                modifier = Modifier.navigationBarsPadding(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 120.dp),
+            ) {
+                itemsIndexed(tracks, key = { index, track -> "$index-${track.id}" }) { index, track ->
+                    val isCurrent = track.id == currentTrackId
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onPlayAt(index) }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(
-                            track.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
-                        )
-                        Text(
-                            "${track.artist}  ·  ${Format.duration(track.durationMs)}",
+                            "%02d".format(index + 1),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                            color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.width(28.dp),
                         )
-                    }
-                    Column {
-                        AtlasIconButton(text = "{ viewModel.moveItem(index, (index - 1).coerceAtLeast(0)) }, modifier = Modifier.size(32.dp)", onClick = { viewModel.moveItem(index, (index - 1).coerceAtLeast(0)) }, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Filled.ArrowUpward, contentDescription = "Move up", modifier = Modifier.size(16.dp))
+                        com.atlas.music.ui.components.TrackCoverArt(track = track, contentDescription = null, size = 44.dp, cornerRadius = 8.dp, showStrip = false)
+                        androidx.compose.foundation.layout.Spacer(Modifier.size(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                track.title,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
+                            )
+                            Text(
+                                "${track.artist}  ·  ${Format.duration(track.durationMs)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
-                        AtlasIconButton(text = "{ viewModel.moveItem(index, (index + 1).coerceAtMost(tracks.lastIndex)) }, modifier = Modifier.size(32.dp)", onClick = { viewModel.moveItem(index, (index + 1).coerceAtMost(tracks.lastIndex)) }, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Filled.ArrowDownward, contentDescription = "Move down", modifier = Modifier.size(16.dp))
+                        Column {
+                            AtlasIconButton(
+                                text = "Move up",
+                                onClick = { viewModel.moveItem(index, (index - 1).coerceAtLeast(0)) },
+                                enabled = index > 0,
+                                modifier = Modifier.size(36.dp),
+                            ) {
+                                Icon(Icons.Filled.ArrowUpward, contentDescription = "Move up", modifier = Modifier.size(18.dp))
+                            }
+                            AtlasIconButton(
+                                text = "Move down",
+                                onClick = { viewModel.moveItem(index, (index + 1).coerceAtMost(tracks.lastIndex)) },
+                                enabled = index < tracks.lastIndex,
+                                modifier = Modifier.size(36.dp),
+                            ) {
+                                Icon(Icons.Filled.ArrowDownward, contentDescription = "Move down", modifier = Modifier.size(18.dp))
+                            }
                         }
-                    }
-                    AtlasIconButton(text = "{ viewModel.removeItem(index) }", onClick = { viewModel.removeItem(index) }) {
-                        Icon(Icons.Filled.Close, contentDescription = "Remove from queue", modifier = Modifier.size(18.dp))
+                        AtlasIconButton(text = "Remove from queue", onClick = { viewModel.removeItem(index) }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Remove from queue", modifier = Modifier.size(18.dp))
+                        }
                     }
                 }
             }
         }
     } // end of Column (inside Box)
 
-    SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
+    SnackbarHost(
+        hostState = snackbarHostState,
+        modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
+    )
 
     if (showSaveDialog) {
         AlertDialog(

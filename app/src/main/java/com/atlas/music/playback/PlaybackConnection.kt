@@ -113,6 +113,13 @@ class PlaybackConnection(private val context: Context) {
         override fun onRepeatModeChanged(repeatMode: Int) = syncFromPlayer()
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = syncFromPlayer()
         override fun onPlaybackParametersChanged(playbackParameters: androidx.media3.common.PlaybackParameters) = syncFromPlayer()
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            _state.value = _state.value.copy(
+                isPlaying = false,
+                isBuffering = false,
+                lastError = error.localizedMessage ?: error.errorCodeName,
+            )
+        }
     }
 
     private var lastWidgetMs: Long = 0
@@ -137,6 +144,7 @@ class PlaybackConnection(private val context: Context) {
             shuffleEnabled = ctrl.shuffleModeEnabled,
             playbackSpeed = ctrl.playbackParameters.speed,
             hasQueue = ctrl.mediaItemCount > 0,
+            lastError = if (ctrl.isPlaying) null else _state.value.lastError,
         )
         val now = System.currentTimeMillis()
         if (now - lastWidgetMs > 1000) {

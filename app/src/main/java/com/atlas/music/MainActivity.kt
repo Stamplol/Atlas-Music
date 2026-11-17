@@ -54,15 +54,19 @@ import com.atlas.music.ui.theme.AtlasTheme
 
 class MainActivity : ComponentActivity() {
 
+    private val hasAudioPermissionState = mutableStateOf(false)
+
+    private fun checkAudioPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        hasAudioPermissionState.value = checkAudioPermission()
 
         val notificationsLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
         val audioLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (!granted) {
-                // The rationale screen replaces the app; user can still grant from Settings.
-            }
+            hasAudioPermissionState.value = granted || checkAudioPermission()
         }
 
         // Best-effort notification permission request; playback works without it.
@@ -71,27 +75,26 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            val hasAudioPermission = rememberSaveable {
-                mutableStateOf(
-                    ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
-                )
-            }
+            val hasAudioPermission by hasAudioPermissionState
             val settings by ServiceLocator.settings.settings.collectAsState(initial = AtlasSettings())
 
             AtlasTheme(settings) {
-                if (hasAudioPermission.value) {
+                if (hasAudioPermission) {
                     LaunchedEffect(Unit) { handleExternalIntent(intent) }
                     AtlasMusicApp()
                 } else {
                     PermissionGate(
                         onGrant = { audioLauncher.launch(Manifest.permission.READ_MEDIA_AUDIO) },
-                        onRecheck = {
-                            hasAudioPermission.value = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
-                        },
+                        onRecheck = { hasAudioPermissionState.value = checkAudioPermission() },
                     )
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        hasAudioPermissionState.value = checkAudioPermission()
     }
 
     override fun onNewIntent(intent: Intent) {

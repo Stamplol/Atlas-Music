@@ -33,6 +33,14 @@ object EqCurves {
 
     fun gainsFor(name: String): List<Int> = CURVES[name] ?: emptyList()
 
+    /** Identify the preset name for persisted [bands], or "Flat" / "Custom". */
+    fun matchingPresetName(bands: List<Int>): String {
+        if (bands.isEmpty() || bands.all { it == 0 }) return "Flat"
+        return CURVES.entries.firstOrNull { (_, curve) ->
+            curve.size == bands.size && curve == bands
+        }?.key ?: "Custom"
+    }
+
     /** Generic band labels — we don't know the device's exact centers. */
     val MANUAL_BANDS = listOf(
         "Sub", "Bass", "Low-mid", "Mid", "Hi-mid", "Presence", "Brilliance", "Air", "Top",

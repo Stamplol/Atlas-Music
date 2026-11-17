@@ -5,6 +5,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -49,7 +51,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun FocusPage(
     state: ToolsUiState,
@@ -92,7 +94,7 @@ fun FocusPage(
                             Text(if (state.streakDays > 0) "${state.streakDays}-day streak" else "Start your streak", style = MaterialTheme.typography.titleSmall)
                         }
                         Spacer(Modifier.height(10.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             listOf(15, 25, 50).forEach { m ->
                                 FilterChip(selected = state.settings.pomodoroFocusMinutes == m, onClick = { viewModel.setFocusMinutes(m) }, label = { Text("${m}m") })
                             }

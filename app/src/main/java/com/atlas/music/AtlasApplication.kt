@@ -7,14 +7,21 @@ import android.os.Build
 import com.atlas.music.di.ServiceLocator
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class AtlasApplication : Application() {
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
         ServiceLocator.init(this)
         startPython()
         createNotificationChannels()
+        appScope.launch { runCatching { ServiceLocator.downloadManager.recoverInterrupted() } }
     }
 
     private fun startPython() {

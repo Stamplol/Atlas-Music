@@ -74,12 +74,15 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.atlas.music.data.db.SmartPlaylist
 import com.atlas.music.data.db.TrackEntity
+import com.atlas.music.di.AtlasSettings
 import com.atlas.music.di.ServiceLocator
 import com.atlas.music.ui.components.MiniPlayerBar
 import com.atlas.music.ui.screens.DownloadsScreen
 import com.atlas.music.ui.screens.DuplicatesScreen
 import com.atlas.music.ui.screens.HomeScreen
+import com.atlas.music.ui.screens.IpodModeScreen
 import com.atlas.music.ui.screens.LibraryScreen
+import com.atlas.music.ui.screens.tools.ToolPage
 import com.atlas.music.ui.screens.NowPlayingScreen
 import com.atlas.music.ui.screens.PlaylistDetailScreen
 import com.atlas.music.ui.screens.QueueScreen
@@ -117,15 +120,31 @@ fun AtlasMusicApp() {
     val snackbar = remember { SnackbarHostState() }
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = backStackEntry?.destination?.route?.substringBefore('/') ?: "home"
+    val currentRoute = backStackEntry?.destination?.route?.substringBefore('/')?.substringBefore('?') ?: "home"
 
     val playerVm: PlayerViewModel = viewModel()
     val toolsVm: com.atlas.music.ui.viewmodel.ToolsViewModel = viewModel()
     val playerState by playerVm.state.collectAsState()
+    val appSettings by ServiceLocator.settings.settings.collectAsState(initial = AtlasSettings())
     LaunchedEffect(playerState.lastError) {
         playerState.lastError?.let { snackbar.showSnackbar(it) }
     }
     val sleepTimerEndAt by playerVm.sleepTimerEndAt.collectAsState()
+
+    if (appSettings.ipodModeEnabled) {
+        IpodModeScreen(
+            playerState = playerState,
+            settings = appSettings,
+            onExitIpod = { scope.launch { ServiceLocator.settings.setIpodModeEnabled(false) } },
+            onTogglePlayPause = playerVm::togglePlayPause,
+            onSkipNext = playerVm::skipNext,
+            onSkipPrevious = playerVm::skipPrevious,
+            onSeekTo = playerVm::seekTo,
+            onToggleShuffle = playerVm::toggleShuffle,
+            onCycleRepeat = playerVm::cycleRepeatMode,
+        )
+        return
+    }
 
     // Shared track actions
     var pendingTrack by remember { mutableStateOf<TrackEntity?>(null) }
@@ -169,10 +188,16 @@ fun AtlasMusicApp() {
                             NavigationBarItem(
                                 selected = currentRoute == tab.route,
                                 onClick = {
-                                    navController.navigate(tab.route) {
-                                        popUpTo("home") { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
+                                    if (tab.route == "home") {
+                                        if (!navController.popBackStack("home", inclusive = false)) {
+                                            navController.navigate("home") { launchSingleTop = true }
+                                        }
+                                    } else {
+                                        navController.navigate(tab.route) {
+                                            popUpTo("home") { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
                                     }
                                 },
                                 icon = { Icon(tab.icon, contentDescription = tab.label) },
@@ -200,10 +225,16 @@ fun AtlasMusicApp() {
                         NavigationRailItem(
                             selected = currentRoute == tab.route,
                             onClick = {
-                                navController.navigate(tab.route) {
-                                    popUpTo("home") { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
+                                if (tab.route == "home") {
+                                    if (!navController.popBackStack("home", inclusive = false)) {
+                                        navController.navigate("home") { launchSingleTop = true }
+                                    }
+                                } else {
+                                    navController.navigate(tab.route) {
+                                        popUpTo("home") { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 }
                             },
                             icon = { Icon(tab.icon, contentDescription = tab.label) },
@@ -227,6 +258,12 @@ fun AtlasMusicApp() {
             composable("home", enterTransition = { fadeIn(tween(210)) }, exitTransition = { fadeOut(tween(90)) }, popEnterTransition = { fadeIn(tween(210)) }, popExitTransition = { fadeOut(tween(90)) }) {
                 val homeVm: HomeViewModel = viewModel()
                 val state by homeVm.state.collectAsState()
+                val allTracks by remember { ServiceLocator.musicRepository.observeAll(com.atlas.music.util.SortOption.TITLE) }.collectAsState(initial = emptyList())
+                LaunchedEffect(state.lastScanMessage, state.error) {
+                    val msg = state.lastScanMessage ?: state.error ?: return@LaunchedEffect
+                    snackbar.showSnackbar(msg)
+                    homeVm.dismissMessage()
+                }
                 HomeScreen(
                     state = state,
                     onRescan = homeVm::rescan,
@@ -238,10 +275,29 @@ fun AtlasMusicApp() {
                     onShowInfo = onShowInfo,
                     onEditTags = onEditTags,
                     onOpenLibrary = { navController.navigate("library") },
+                    onShuffleAll = {
+                        if (allTracks.isNotEmpty()) {
+                            onPlayTracks(allTracks.shuffled(), 0)
+                        }
+                    },
+                    onOpenFavorites = { navController.navigate("smart/${SmartPlaylist.FAVORITES.name}") },
+                    onOpenDownloads = { navController.navigate("downloads") },
+                    onOpenSoundStudio = { navController.navigate("tools?page=audio") },
+                    onOpenPlaylists = { navController.navigate("library?tab=5") },
+                    onTriggerSecretIpod = {
+                        scope.launch {
+                            ServiceLocator.settings.setIpodModeEnabled(true)
+                        }
+                    },
                 )
             }
 
-            composable("library", enterTransition = { fadeIn(tween(210)) }, exitTransition = { fadeOut(tween(90)) }, popEnterTransition = { fadeIn(tween(210)) }, popExitTransition = { fadeOut(tween(90)) }) {
+            composable(
+                "library?tab={tab}",
+                arguments = listOf(navArgument("tab") { type = NavType.IntType; defaultValue = 0 }),
+                enterTransition = { fadeIn(tween(210)) }, exitTransition = { fadeOut(tween(90)) }, popEnterTransition = { fadeIn(tween(210)) }, popExitTransition = { fadeOut(tween(90)) },
+            ) { entry ->
+                val initialTab = entry.arguments?.getInt("tab") ?: 0
                 val libraryVm: LibraryViewModel = viewModel()
                 val state by libraryVm.state.collectAsState()
                 val sort by libraryVm.sort.collectAsState()
@@ -265,6 +321,7 @@ fun AtlasMusicApp() {
                     onOpenPlaylist = { id -> navController.navigate("playlist/$id") },
                     onOpenSmart = { smart -> navController.navigate("smart/${smart.name}") },
                     onOpenDuplicates = { navController.navigate("duplicates") },
+                    initialTab = initialTab,
                 )
             }
 
@@ -288,7 +345,19 @@ fun AtlasMusicApp() {
                 )
             }
 
-            composable("tools", enterTransition = { fadeIn(tween(210)) }, exitTransition = { fadeOut(tween(90)) }, popEnterTransition = { fadeIn(tween(210)) }, popExitTransition = { fadeOut(tween(90)) }) {
+            composable(
+                "tools?page={page}",
+                arguments = listOf(navArgument("page") { type = NavType.StringType; defaultValue = "hub" }),
+                enterTransition = { fadeIn(tween(210)) }, exitTransition = { fadeOut(tween(90)) }, popEnterTransition = { fadeIn(tween(210)) }, popExitTransition = { fadeOut(tween(90)) },
+            ) { entry ->
+                val pageArg = entry.arguments?.getString("page")
+                val initialToolPage = when (pageArg) {
+                    "audio" -> ToolPage.AUDIO
+                    "focus" -> ToolPage.FOCUS
+                    "sleep" -> ToolPage.SLEEP
+                    "library" -> ToolPage.LIBRARY
+                    else -> ToolPage.HUB
+                }
                 ToolsScreen(
                     viewModel = toolsVm,
                     onExit = { navController.navigate("home") { popUpTo("home") { inclusive = false }; launchSingleTop = true } },
@@ -297,6 +366,7 @@ fun AtlasMusicApp() {
                     onOpenDuplicates = { navController.navigate("duplicates") },
                     onOpenDownloads = { navController.navigate("downloads") },
                     onOpenSettings = { navController.navigate("settings") },
+                    initialPage = initialToolPage,
                 )
             }
 
@@ -305,6 +375,7 @@ fun AtlasMusicApp() {
                 val state by downloadsVm.state.collectAsState()
                 DownloadsScreen(
                     state = state,
+                    onBack = { navController.popBackStack() },
                     onUrlChange = downloadsVm::onUrlChange,
                     onFetchPreview = downloadsVm::fetchPreview,
                     onSetSearchProvider = downloadsVm::setSearchProvider,
@@ -379,7 +450,10 @@ fun AtlasMusicApp() {
                     currentTrackId = playerState.currentTrackId,
                     onClose = { navController.popBackStack() },
                     onPlayAt = { index ->
-                        ServiceLocator.playbackConnection.controller?.seekTo(index, 0)
+                        ServiceLocator.playbackConnection.controller?.apply {
+                            seekTo(index, 0)
+                            if (!isPlaying) play()
+                        }
                     },
                 )
             }
@@ -394,6 +468,7 @@ fun AtlasMusicApp() {
                     viewModel = detailVm,
                     onBack = { navController.popBackStack() },
                     onPlayAll = { tracks -> onPlayTracks(tracks, 0) },
+                    onPlayAt = { tracks, index -> onPlayTracks(tracks, index) },
                     onToggleFavorite = onToggleFavorite,
                     onAddToPlaylist = onAddToPlaylist,
                     onShowInfo = onShowInfo,

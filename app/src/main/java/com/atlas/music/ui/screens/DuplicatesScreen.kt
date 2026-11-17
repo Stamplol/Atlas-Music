@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -50,7 +50,7 @@ fun DuplicatesScreen(
     Column(modifier = modifier.fillMaxWidth()) {
         TopAppBar(
             title = { Text("Duplicates", fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold) },
-            navigationIcon = { AtlasIconButton(text = "Back", onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") } },
+            navigationIcon = { AtlasIconButton(text = "Back", onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } },
         )
         if (!loading && groups.isEmpty()) {
             EmptyState(

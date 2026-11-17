@@ -1,10 +1,14 @@
+@file:Suppress("DEPRECATION")
+
 package com.atlas.music.playback
 
 import android.app.PendingIntent
 import android.content.Intent
 import android.media.audiofx.BassBoost
+import android.media.audiofx.DynamicsProcessing
 import android.media.audiofx.Equalizer
 import android.media.audiofx.LoudnessEnhancer
+import android.media.audiofx.Virtualizer
 import android.os.Bundle
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -29,6 +33,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -45,6 +50,8 @@ class AtlasPlaybackService : MediaLibraryService() {
     companion object {
         /** Exposed so the UI can honestly say when the device has no EQ support. */
         val EffectsStatus = kotlinx.coroutines.flow.MutableStateFlow<Boolean?>(null)
+        /** True when 10-band DynamicsProcessing (AutoEq + Preamp + Limiter + Balance) attached cleanly. */
+        val DynamicsStatus = kotlinx.coroutines.flow.MutableStateFlow<Boolean>(false)
 
         const val ACTION_SET_OUTPUT_DEVICE = "com.atlas.music.SET_OUTPUT_DEVICE"
         const val ACTION_SET_FOCUS_VOLUME = "com.atlas.music.SET_FOCUS_VOLUME"
@@ -70,6 +77,8 @@ class AtlasPlaybackService : MediaLibraryService() {
     private var equalizer: Equalizer? = null
     private var bassBoost: BassBoost? = null
     private var loudness: LoudnessEnhancer? = null
+    private var virtualizer: Virtualizer? = null
+    private var dynamicsProcessing: DynamicsProcessing? = null
 
     @Volatile var audioEffectsAvailable: Boolean = true
         private set
@@ -140,14 +149,22 @@ class AtlasPlaybackService : MediaLibraryService() {
                     AtlasNotificationState.trackId = id ?: -1L
                     runCatching { mediaLibrarySession?.let { onUpdateNotification(it, true) } }
                 }
-                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
-                    reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
-                ) {
-                    if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && outgoingId != null) {
+                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
+                    if (outgoingId != null) {
                         outgoingId.toLongOrNull()?.let { trackId ->
                             scope.launch { ServiceLocator.musicRepository.recordPlay(trackId) }
                         }
                     }
+                    if (latestSettings.sleepTimerEndOfTrack) {
+                        sessionPlayer.pause()
+                        sessionPlayer.seekTo(0L)
+                        scope.launch { runCatching { ServiceLocator.settings.setSleepTimerEndOfTrack(false) } }
+                        return
+                    }
+                }
+                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
+                    reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
+                ) {
                     // Crossfade: new track starts from silence and rises gently.
                     maybeStartFadeIn(sessionPlayer)
                 }
@@ -190,7 +207,9 @@ class AtlasPlaybackService : MediaLibraryService() {
         settingsJob?.cancel()
         crossfadeJob?.cancel()
         equalizer?.release(); bassBoost?.release(); loudness?.release()
+        virtualizer?.release(); dynamicsProcessing?.release()
         equalizer = null; bassBoost = null; loudness = null
+        virtualizer = null; dynamicsProcessing = null
         mediaLibrarySession?.run {
             player.release()
             release()
@@ -415,51 +434,164 @@ class AtlasPlaybackService : MediaLibraryService() {
 
     private fun effectiveVolume(): Float = focusVolume.coerceIn(0f, 1f)
 
-    // ---------- Equalizer / bass boost / loudness ----------
+    // ---------- Equalizer / DynamicsProcessing / Virtualizer / Bass / Loudness ----------
+
+    private val isoBandCutoffsHz = floatArrayOf(
+        44f, 88f, 177f, 355f, 710f, 1420f, 2840f, 5680f, 11360f, 22000f,
+    )
 
     private fun attachAudioEffects(exoPlayer: ExoPlayer, audioSessionId: Int) {
-        try {
-            val effectiveId = if (audioSessionId != 0) audioSessionId else exoPlayer.audioSessionId
-            equalizer = Equalizer(0, effectiveId).apply { enabled = false }
-            bassBoost = BassBoost(0, effectiveId).apply { enabled = false }
-            loudness = LoudnessEnhancer(effectiveId).apply { enabled = false }
-            audioEffectsAvailable = true
-            EffectsStatus.value = true
-        } catch (e: Exception) {
-            // Rare devices with no audio effects at all. UI shows "Not available on this device".
-            audioEffectsAvailable = false
-            EffectsStatus.value = false
+        val effectiveId = if (audioSessionId != 0) audioSessionId else exoPlayer.audioSessionId
+        var attachedAny = false
+
+        // Prefer 10-band DynamicsProcessing (AutoEq, preamp headroom, L/R balance, peak limiter).
+        runCatching {
+            val cfg = DynamicsProcessing.Config.Builder(
+                DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
+                2,
+                false, 0,
+                false, 0,
+                true, com.atlas.music.util.AudioDspMath.BAND_COUNT,
+                true,
+            ).build()
+            DynamicsProcessing(0, effectiveId, cfg).apply {
+                enabled = false
+                for (i in 0 until com.atlas.music.util.AudioDspMath.BAND_COUNT) {
+                    setPostEqBandAllChannelsTo(i, DynamicsProcessing.EqBand(true, isoBandCutoffsHz[i], 0f))
+                }
+                setLimiterAllChannelsTo(
+                    DynamicsProcessing.Limiter(true, true, 0, 2.0f, 60.0f, 10.0f, -0.5f, 0f)
+                )
+            }
+        }.onSuccess {
+            dynamicsProcessing = it
+            DynamicsStatus.value = true
+            attachedAny = true
+        }.onFailure { e ->
+            android.util.Log.w("AtlasAudio", "DynamicsProcessing unavailable, falling back to Equalizer: ${e.message}")
+            DynamicsStatus.value = false
         }
+
+        // Legacy Equalizer as fallback (when DynamicsProcessing isn't attached).
+        if (dynamicsProcessing == null) {
+            runCatching {
+                Equalizer(0, effectiveId).apply { enabled = false }
+            }.onSuccess {
+                equalizer = it
+                attachedAny = true
+            }
+        }
+
+        runCatching { BassBoost(0, effectiveId).apply { enabled = false } }
+            .onSuccess { bassBoost = it; attachedAny = true }
+        runCatching { LoudnessEnhancer(effectiveId).apply { enabled = false } }
+            .onSuccess { loudness = it; attachedAny = true }
+        runCatching { Virtualizer(0, effectiveId).apply { enabled = false } }
+            .onSuccess { virtualizer = it }
+
+        audioEffectsAvailable = attachedAny
+        EffectsStatus.value = attachedAny
     }
 
     private suspend fun applyAudioSettings(exoPlayer: ExoPlayer) {
-        ServiceLocator.settings.settings.collect { settings ->
-            val eq = equalizer ?: return@collect
-            if (settings.equalizerEnabled) {
-                eq.enabled = true
-                val gains = ServiceLocator.settings.equalizerBands.first()
-                val bands = eq.numberOfBands.toInt()
-                for (i in 0 until bands) {
-                    val gainMb = gains.getOrNull(i) ?: 0
-                    eq.setBandLevel(i.toShort(), gainMb.toShort())
-                }
-            } else {
-                eq.enabled = false
+        combine(
+            ServiceLocator.settings.settings,
+            ServiceLocator.settings.equalizerBands,
+        ) { settings, gains -> settings to gains }.collect { (settings, gains) ->
+            val masterActive = settings.equalizerEnabled
+            val effectiveCurve = com.atlas.music.util.AudioDspMath.computeEffectiveCurve(
+                profileId = settings.headphoneProfileId,
+                userBandsMb = gains,
+                preampDb = settings.preampDb,
+                soundCheckWarmth = settings.soundCheckWarmth,
+                soundCheckPunch = settings.soundCheckPunch,
+                autoHeadroom = settings.autoHeadroomEnabled,
+            )
+            val (leftDb, rightDb) = com.atlas.music.util.AudioDspMath.channelGainsDb(
+                effectivePreampDb = effectiveCurve.effectivePreampDb,
+                balance = settings.channelBalance,
+            )
+
+            dynamicsProcessing?.let { dp ->
+                runCatching {
+                    val needDp = masterActive || kotlin.math.abs(settings.channelBalance) > 0.01f || kotlin.math.abs(settings.preampDb) > 0.1f
+                    dp.enabled = needDp
+                    if (needDp) {
+                        dp.setInputGainbyChannel(0, leftDb)
+                        dp.setInputGainbyChannel(1, rightDb)
+                        val gains10 = if (masterActive) effectiveCurve.totalBandsDb10 else List(10) { 0f }
+                        for (i in 0 until com.atlas.music.util.AudioDspMath.BAND_COUNT) {
+                            dp.setPostEqBandAllChannelsTo(
+                                i,
+                                DynamicsProcessing.EqBand(true, isoBandCutoffsHz[i], gains10[i]),
+                            )
+                        }
+                        dp.setLimiterAllChannelsTo(
+                            DynamicsProcessing.Limiter(
+                                true,
+                                settings.limiterEnabled,
+                                0,
+                                2.0f,
+                                60.0f,
+                                10.0f,
+                                -0.5f,
+                                0f,
+                            )
+                        )
+                    }
+                }.onFailure { android.util.Log.w("AtlasAudio", "dp update failed: ${it.message}") }
             }
+
+            equalizer?.let { eq ->
+                runCatching {
+                    if (masterActive) {
+                        eq.enabled = true
+                        val range = eq.bandLevelRange
+                        val minMb = range[0].toInt()
+                        val maxMb = range[1].toInt()
+                        val bands = eq.numberOfBands.toInt()
+                        val mapped = com.atlas.music.util.AudioDspMath.resample10BandDbToLegacyMb(
+                            effectiveCurve.totalBandsDb10, bands, minMb, maxMb,
+                        )
+                        for (i in 0 until bands) {
+                            eq.setBandLevel(i.toShort(), mapped[i].toShort())
+                        }
+                    } else {
+                        eq.enabled = false
+                    }
+                }
+            }
+
             bassBoost?.let { bb ->
-                if (settings.bassBoostEnabled && bb.strengthSupported) {
-                    bb.enabled = true
-                    bb.setStrength((settings.bassBoostStrength * 10).toShort())
-                } else {
-                    bb.enabled = false
+                runCatching {
+                    if (masterActive && settings.bassBoostEnabled && bb.strengthSupported) {
+                        bb.enabled = true
+                        bb.setStrength((settings.bassBoostStrength * 10).coerceIn(0, 1000).toShort())
+                    } else {
+                        bb.enabled = false
+                    }
                 }
             }
+
+            virtualizer?.let { virt ->
+                runCatching {
+                    if (masterActive && settings.virtualizerStrength > 0 && virt.strengthSupported) {
+                        virt.enabled = true
+                        virt.setStrength((settings.virtualizerStrength * 10).coerceIn(0, 1000).toShort())
+                    } else {
+                        virt.enabled = false
+                    }
+                }
+            }
+
             loudness?.let { le ->
-                if (settings.normalizationEnabled) {
-                    le.enabled = true
-                    le.setTargetGain(settings.loudnessGainMb)
-                } else {
-                    le.enabled = false
+                runCatching {
+                    if (masterActive && settings.normalizationEnabled) {
+                        le.enabled = true
+                        le.setTargetGain(settings.loudnessGainMb)
+                    } else {
+                        le.enabled = false
+                    }
                 }
             }
         }
@@ -473,25 +605,27 @@ class AtlasPlaybackService : MediaLibraryService() {
             while (isActive) {
                 delay(200)
                 val settings = latestSettings
+                val duration = exoPlayer.duration.takeIf { it > 0 }
+                val remaining = if (duration != null) duration - exoPlayer.currentPosition else Long.MAX_VALUE
+                // Sleep timer "end of track": works regardless of crossfade or queue position.
+                if (settings.sleepTimerEndOfTrack && exoPlayer.isPlaying && remaining in 1..600) {
+                    exoPlayer.pause()
+                    exoPlayer.volume = effectiveVolume()
+                    fadeState = FadeState.IDLE
+                    scope.launch { runCatching { ServiceLocator.settings.setSleepTimerEndOfTrack(false) } }
+                    continue
+                }
                 if (!settings.crossfadeEnabled) {
                     if (exoPlayer.volume != effectiveVolume()) exoPlayer.volume = effectiveVolume()
                     fadeState = FadeState.IDLE
                     continue
                 }
-                val duration = exoPlayer.duration.takeIf { it > 0 } ?: continue
-                val remaining = duration - exoPlayer.currentPosition
+                if (duration == null) continue
                 val fadeMs = settings.crossfadeSeconds * 1000L
-                val atEnd = (exoPlayer.repeatMode != Player.REPEAT_MODE_ONE &&
+                val hasNextTrack = (exoPlayer.repeatMode != Player.REPEAT_MODE_ONE &&
                     exoPlayer.currentMediaItemIndex < exoPlayer.mediaItemCount - 1) ||
                     exoPlayer.repeatMode == Player.REPEAT_MODE_ALL
-                // Sleep timer “end of track”: if we are about to start the next track and the user
-                // asked to stop after this track, pause instead of rolling forward.
-                if (settings.sleepTimerEndOfTrack && !atEnd && exoPlayer.isPlaying && remaining in 1..500) {
-                    exoPlayer.pause()
-                    scope.launch { runCatching { ServiceLocator.settings.setSleepTimerEndOfTrack(false) } }
-                    continue
-                }
-                if (exoPlayer.isPlaying && remaining in 1..fadeMs && atEnd) {
+                if (exoPlayer.isPlaying && remaining in 1..fadeMs && hasNextTrack) {
                     fadeState = FadeState.FADING_OUT
                     val fraction = remaining.toFloat() / fadeMs.toFloat()
                     exoPlayer.volume = (fraction.coerceIn(0f, 1f) * effectiveVolume())

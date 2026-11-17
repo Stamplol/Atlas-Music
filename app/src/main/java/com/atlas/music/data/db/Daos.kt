@@ -140,6 +140,9 @@ interface PlaylistDao {
     @Query("SELECT * FROM playlists WHERE id = :id")
     suspend fun byId(id: Long): PlaylistEntity?
 
+    @Query("SELECT * FROM playlists WHERE id = :id")
+    fun observeById(id: Long): Flow<PlaylistEntity?>
+
     @Insert
     suspend fun insert(playlist: PlaylistEntity): Long
 
@@ -208,6 +211,12 @@ interface DownloadDao {
 
     @Query("UPDATE download_tasks SET status = :status, error = :error, completedAtMs = :completedAt WHERE id = :id")
     suspend fun setStatus(id: Long, status: DownloadStatus, error: String?, completedAt: Long?)
+
+    @Query("UPDATE download_tasks SET status = 'FAILED', error = :message, completedAtMs = :now WHERE status IN ('FETCHING_INFO', 'DOWNLOADING')")
+    suspend fun markInterruptedFailed(message: String, now: Long): Int
+
+    @Query("SELECT EXISTS(SELECT 1 FROM download_tasks WHERE status = 'QUEUED')")
+    suspend fun hasQueued(): Boolean
 
     @Query("UPDATE download_tasks SET progress = :progress, bytesDownloaded = :downloaded, bytesTotal = :total, speedBytesPerSec = :speed, etaSeconds = :eta WHERE id = :id")
     suspend fun setProgress(id: Long, progress: Float, downloaded: Long, total: Long, speed: Long, eta: Long)

@@ -44,6 +44,13 @@ val AtlasTypography = Typography(
         lineHeight = 30.sp,
         letterSpacing = (-0.8).sp,
     ),
+    headlineSmall = TextStyle(
+        fontFamily = SpaceGrotesk,
+        fontWeight = FontWeight.Bold,
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
+        letterSpacing = (-0.4).sp,
+    ),
     titleLarge = TextStyle(
         fontFamily = SpaceGrotesk,
         fontWeight = FontWeight.SemiBold,

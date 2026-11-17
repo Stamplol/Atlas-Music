@@ -470,12 +470,13 @@ fun TrackProceduralCover(
     val seed by produceState(initialValue = 0, track.uri, track.sizeBytes) {
         value = CoverArtGenerator.seedForTrack(context, track)
     }
+    val formatLabel = MediaFormatHelper.displayAudioFormatLabel(track.mimeType, track.displayName)
     if (seed == 0) {
         // Seed 0 is valid but rare; fall back to instant preview seed to avoid flicker
         ProceduralCoverArt(
             seed = CoverArtGenerator.seedForPreview(track.title, track.sizeBytes),
             title = track.title,
-            ext = track.mimeType.substringAfter("/", ""),
+            ext = formatLabel,
             sizeBytes = track.sizeBytes,
             modifier = modifier,
             showStrip = showStrip,
@@ -484,7 +485,7 @@ fun TrackProceduralCover(
         ProceduralCoverArt(
             seed = seed,
             title = track.title,
-            ext = track.mimeType.substringAfter("/", ""),
+            ext = formatLabel,
             sizeBytes = track.sizeBytes,
             modifier = modifier,
             showStrip = showStrip,

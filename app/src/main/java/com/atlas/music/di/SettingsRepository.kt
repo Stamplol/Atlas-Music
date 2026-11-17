@@ -36,7 +36,19 @@ class SettingsRepository(private val context: Context) {
         val BASS_STRENGTH = intPreferencesKey("bass_boost_strength")
         val NORMALIZE = booleanPreferencesKey("normalization_enabled")
         val LOUDNESS_GAIN_MB = intPreferencesKey("loudness_gain_mb")
+        val HP_PROFILE = stringPreferencesKey("headphone_profile_id")
+        val PREAMP_DB = floatPreferencesKey("preamp_db")
+        val AUTO_HEADROOM = booleanPreferencesKey("auto_headroom_enabled")
+        val VIRTUALIZER_STRENGTH = intPreferencesKey("virtualizer_strength")
+        val CHANNEL_BALANCE = floatPreferencesKey("channel_balance")
+        val LIMITER = booleanPreferencesKey("limiter_enabled")
+        val SC_WARMTH = floatPreferencesKey("sound_check_warmth")
+        val SC_PUNCH = floatPreferencesKey("sound_check_punch")
         val SPEED = floatPreferencesKey("playback_speed")
+        val IPOD_ENABLED = booleanPreferencesKey("ipod_mode_enabled")
+        val IPOD_UNLOCKED = booleanPreferencesKey("ipod_mode_unlocked")
+        val IPOD_FINISH = stringPreferencesKey("ipod_shell_finish")
+        val IPOD_CLICK = booleanPreferencesKey("ipod_click_sound")
         val SLEEP_MIN = intPreferencesKey("sleep_timer_default_minutes")
         val EXCLUDED = stringSetPreferencesKey("excluded_folders")
         val MUSIC_FOLDER_URI = stringPreferencesKey("music_folder_uri")
@@ -82,7 +94,19 @@ class SettingsRepository(private val context: Context) {
             bassBoostStrength = (p[K.BASS_STRENGTH] ?: 60).coerceIn(0, 100),
             normalizationEnabled = p[K.NORMALIZE] ?: false,
             loudnessGainMb = (p[K.LOUDNESS_GAIN_MB] ?: 400).coerceIn(0, 1000),
+            headphoneProfileId = p[K.HP_PROFILE] ?: "",
+            preampDb = (p[K.PREAMP_DB] ?: 0f).coerceIn(-12f, 6f),
+            autoHeadroomEnabled = p[K.AUTO_HEADROOM] ?: true,
+            virtualizerStrength = (p[K.VIRTUALIZER_STRENGTH] ?: 0).coerceIn(0, 100),
+            channelBalance = (p[K.CHANNEL_BALANCE] ?: 0f).coerceIn(-1f, 1f),
+            limiterEnabled = p[K.LIMITER] ?: true,
+            soundCheckWarmth = (p[K.SC_WARMTH] ?: 0f).coerceIn(-1f, 1f),
+            soundCheckPunch = (p[K.SC_PUNCH] ?: 0f).coerceIn(-1f, 1f),
             playbackSpeed = (p[K.SPEED] ?: 1.0f).coerceIn(0.5f, 2.0f),
+            ipodModeEnabled = p[K.IPOD_ENABLED] ?: false,
+            ipodModeUnlocked = p[K.IPOD_UNLOCKED] ?: false,
+            ipodShellFinish = p[K.IPOD_FINISH] ?: "silver",
+            ipodClickSound = p[K.IPOD_CLICK] ?: true,
             sleepTimerDefaultMinutes = (p[K.SLEEP_MIN] ?: 30).coerceIn(5, 180),
             excludedFolders = p[K.EXCLUDED] ?: emptySet(),
             musicFolderUri = p[K.MUSIC_FOLDER_URI] ?: "",
@@ -119,12 +143,36 @@ class SettingsRepository(private val context: Context) {
     suspend fun setNormalization(enabled: Boolean) = store.edit { it[K.NORMALIZE] = enabled }
     suspend fun setBassBoostStrength(strength: Int) = store.edit { it[K.BASS_STRENGTH] = strength.coerceIn(0, 100) }
     suspend fun setLoudnessGainMb(gainMb: Int) = store.edit { it[K.LOUDNESS_GAIN_MB] = gainMb.coerceIn(0, 1000) }
+    suspend fun setHeadphoneProfile(id: String) = store.edit { it[K.HP_PROFILE] = id }
+    suspend fun setPreampDb(db: Float) = store.edit { it[K.PREAMP_DB] = db.coerceIn(-12f, 6f) }
+    suspend fun setAutoHeadroom(enabled: Boolean) = store.edit { it[K.AUTO_HEADROOM] = enabled }
+    suspend fun setVirtualizerStrength(strength: Int) = store.edit { it[K.VIRTUALIZER_STRENGTH] = strength.coerceIn(0, 100) }
+    suspend fun setChannelBalance(balance: Float) = store.edit { it[K.CHANNEL_BALANCE] = balance.coerceIn(-1f, 1f) }
+    suspend fun setLimiterEnabled(enabled: Boolean) = store.edit { it[K.LIMITER] = enabled }
+    suspend fun setSoundCheck(warmth: Float, punch: Float) = store.edit {
+        it[K.SC_WARMTH] = warmth.coerceIn(-1f, 1f)
+        it[K.SC_PUNCH] = punch.coerceIn(-1f, 1f)
+    }
+    suspend fun setIpodModeEnabled(enabled: Boolean) = store.edit {
+        it[K.IPOD_ENABLED] = enabled
+        if (enabled) it[K.IPOD_UNLOCKED] = true
+    }
+    suspend fun setIpodShellFinish(finish: String) = store.edit { it[K.IPOD_FINISH] = finish }
+    suspend fun setIpodClickSound(enabled: Boolean) = store.edit { it[K.IPOD_CLICK] = enabled }
     suspend fun resetAudio() = store.edit {
         it[K.EQ] = false
         it[K.BASS] = false
         it[K.BASS_STRENGTH] = 60
         it[K.NORMALIZE] = false
         it[K.LOUDNESS_GAIN_MB] = 400
+        it[K.HP_PROFILE] = ""
+        it[K.PREAMP_DB] = 0f
+        it[K.AUTO_HEADROOM] = true
+        it[K.VIRTUALIZER_STRENGTH] = 0
+        it[K.CHANNEL_BALANCE] = 0f
+        it[K.LIMITER] = true
+        it[K.SC_WARMTH] = 0f
+        it[K.SC_PUNCH] = 0f
         it[K.CROSSFADE] = false
         it[K.SPEED] = 1.0f
         it[K.EQ_BANDS] = ""

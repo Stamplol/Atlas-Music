@@ -17,7 +17,19 @@ data class AtlasSettings(
     val bassBoostStrength: Int = 60, // 0..100 — maps to BassBoost strength *10 (defaults to the previous 600)
     val normalizationEnabled: Boolean = false,
     val loudnessGainMb: Int = 400,   // LoudnessEnhancer target gain in millibels (defaults to the previous 400)
+    val headphoneProfileId: String = "",
+    val preampDb: Float = 0f,
+    val autoHeadroomEnabled: Boolean = true,
+    val virtualizerStrength: Int = 0, // 0..100 — maps to Virtualizer strength *10 (soundstage width)
+    val channelBalance: Float = 0f,   // -1f (Left) .. +1f (Right)
+    val limiterEnabled: Boolean = true,
+    val soundCheckWarmth: Float = 0f, // -1f (Bright) .. +1f (Warm)
+    val soundCheckPunch: Float = 0f,  // -1f (Relaxed) .. +1f (Punchy)
     val playbackSpeed: Float = 1.0f,
+    val ipodModeEnabled: Boolean = false,
+    val ipodModeUnlocked: Boolean = false,
+    val ipodShellFinish: String = "silver",
+    val ipodClickSound: Boolean = true,
     val sleepTimerDefaultMinutes: Int = 30,
     val excludedFolders: Set<String> = emptySet(),
     val musicFolderUri: String = "", // SAF tree URI; empty = automatic (MediaStore everywhere)

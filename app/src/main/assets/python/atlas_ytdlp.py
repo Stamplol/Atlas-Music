@@ -389,6 +389,7 @@ def embed_cover(path, cover_url):
         from mutagen.mp4 import MP4, MP4Cover
         from mutagen.flac import FLAC, Picture
         from mutagen.oggvorbis import OggVorbis
+        from mutagen.oggopus import OggOpus
         from mutagen.apev2 import APEv2File
         import urllib.request
     except Exception as exc:
@@ -440,10 +441,9 @@ def embed_cover(path, cover_url):
             audio.save()
             return json.dumps({"ok": True})
 
-        if isinstance(audio, OggVorbis):
+        if isinstance(audio, (OggVorbis, OggOpus)):
             import base64
-            import struct
-            audio.pop_all("metadata_block_picture")
+            audio.pop("metadata_block_picture", None)
             try:
                 from mutagen.flac import Picture as _Pic
                 pic = _Pic()
@@ -452,21 +452,14 @@ def embed_cover(path, cover_url):
                 pic.desc = "Cover"
                 pic.data = image_bytes
                 raw = pic.write()
-                b64 = base64.b64encode(raw).decode()
+                b64 = base64.b64encode(raw).decode("ascii")
                 audio["metadata_block_picture"] = [b64]
                 audio.save()
                 return json.dumps({"ok": True})
-            except Exception:
-                pass
-            # Manual fallback: id3-style is best-effort muxape
-            try:
-                from mutagen.mp4 import MP4 as _MP4A
-                pass
-            except Exception:
-                pass
-            return json.dumps({"ok": False, "error": "ogg vorbis picture embed failed"})
+            except Exception as exc:
+                return json.dumps({"ok": False, "error": f"ogg picture embed failed: {exc}"})
 
-        if isinstance(audio, (MP4 := type(audio))):
+        if isinstance(audio, MP4):
             try:
                 from mutagen.mp4 import MP4Cover
                 covr_format = MP4Cover.FORMAT_JPEG if mime == "image/jpeg" else (MP4Cover.FORMAT_PNG if mime == "image/png" else MP4Cover.FORMAT_AUTO)
@@ -477,20 +470,21 @@ def embed_cover(path, cover_url):
                 return json.dumps({"ok": False, "error": f"mp4 covr embed failed: {exc}"})
 
         try:
-            ape = APEv2File(path)
+            APEv2File(path)
             return json.dumps({"ok": False, "error": "ape embedding not supported"})
         except Exception:
             pass
-        # MP4 check again (covers M4A)
-        try:
-            from mutagen.mp4 import MP4 as _Mp, MP4Cover as _MpC
-            mp = _Mp(path)
-            covr_format = _MpC.FORMAT_JPEG if mime == "image/jpeg" else _MpC.FORMAT_PNG
-            mp["covr"] = [_MpC(image_bytes, imageformat=covr_format)]
-            mp.save()
-            return json.dumps({"ok": True})
-        except Exception as exc:
-            return json.dumps({"ok": False, "error": f"mp4/m4a covr embed failed: {exc}"})
+        if ext in (".m4a", ".mp4"):
+            try:
+                from mutagen.mp4 import MP4 as _Mp, MP4Cover as _MpC
+                mp = _Mp(path)
+                covr_format = _MpC.FORMAT_JPEG if mime == "image/jpeg" else _MpC.FORMAT_PNG
+                mp["covr"] = [_MpC(image_bytes, imageformat=covr_format)]
+                mp.save()
+                return json.dumps({"ok": True})
+            except Exception as exc:
+                return json.dumps({"ok": False, "error": f"mp4/m4a covr embed failed: {exc}"})
+        return json.dumps({"ok": False, "error": f"cover embedding not supported for {ext or 'this container'}"})
     except Exception as exc:
         return json.dumps({"ok": False, "error": traceback.format_exc(limit=2)})
 
@@ -498,9 +492,11 @@ def write_tags(path, title, artist, album, genre, year, track, disc):
     """Best-effort embedded tag rewrite via Mutagen. Returns JSON {ok, error?}."""
     try:
         from mutagen import File as MutagenFile
+        from mutagen.mp3 import MP3
         from mutagen.mp4 import MP4 as MP4File
         from mutagen.flac import FLAC
         from mutagen.oggvorbis import OggVorbis
+        from mutagen.oggopus import OggOpus
         from mutagen.id3 import ID3, TIT2, TPE1, TALB, TCON, TYER, TDRC, TRCK, TPOS
     except Exception:
         return json.dumps({"ok": False, "error": "mutagen unavailable"})
@@ -511,15 +507,19 @@ def write_tags(path, title, artist, album, genre, year, track, disc):
         # Rebuild ffmpeg-hybrid MP4s: ID3v2 pre-pended (sometimes by accident)
         # then the real MP4 story. Strip the preamble to make a valid MP4
         # that Android's MediaScanner/MP4 parsers can actually read.
-        try:
-            with open(path, "rb") as fh:
-                blob = fh.read()
-            stripped = _strip_id3_preamble(blob)
-            if stripped is not None and len(stripped) > 0:
-                with open(path, "wb") as fh:
-                    fh.write(stripped)
-        except Exception:
-            pass
+        if ext not in (".mp3", ".aac"):
+            try:
+                with open(path, "rb") as fh:
+                    prefix = fh.read(3)
+                if prefix == b"ID3":
+                    with open(path, "rb") as fh:
+                        blob = fh.read()
+                    stripped = _strip_id3_preamble(blob)
+                    if stripped is not None and len(stripped) > 0:
+                        with open(path, "wb") as fh:
+                            fh.write(stripped)
+            except Exception:
+                pass
         # MP4/M4A first, even if ffmpeg-wrapped with an ID3v2 preamble — mutagen/mp4 reads it correctly.
         try:
             with open(path, "rb") as fh:
@@ -571,8 +571,8 @@ def write_tags(path, title, artist, album, genre, year, track, disc):
         audio = MutagenFile(path)
         if audio is None:
             return json.dumps({"ok": False, "error": "unsupported audio format"})
-        # Vorbis / Ogg / FLAC
-        if isinstance(audio, (FLAC, OggVorbis)):
+        # Vorbis / Opus / FLAC
+        if isinstance(audio, (FLAC, OggVorbis, OggOpus)):
             if title: audio["title"] = title
             if artist: audio["artist"] = artist
             if album: audio["album"] = album
@@ -591,7 +591,7 @@ def write_tags(path, title, artist, album, genre, year, track, disc):
             if track: audio["trkn"] = [(track, 0)]
             if disc: audio["disk"] = [(disc, 0)]
             audio.save()
-        else:
+        elif isinstance(audio, MP3) or isinstance(getattr(audio, "tags", None), ID3):
             # ID3 (MP3 etc.)
             if audio.tags is None:
                 audio.add_tags()
@@ -606,6 +606,8 @@ def write_tags(path, title, artist, album, genre, year, track, disc):
             if track: _set(TRCK(encoding=3, text=str(track)))
             if disc: _set(TPOS(encoding=3, text=str(disc)))
             audio.save()
+        else:
+            return json.dumps({"ok": False, "error": f"embedded tags unsupported for {type(audio).__name__}"})
         return json.dumps({"ok": True})
     except Exception:
         return json.dumps({"ok": False, "error": traceback.format_exc(limit=2)})

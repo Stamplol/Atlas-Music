@@ -114,27 +114,29 @@ fun TrackRow(
                 tint = if (track.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        AtlasIconButton(text = "{ menuOpen = true }", onClick = { menuOpen = true }) {
-            Icon(
-                imageVector = Icons.Filled.MoreVert,
-                contentDescription = "Track options",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-            DropdownMenuItem(text = { Text("Play next") }, onClick = { menuOpen = false; onPlayNext(track) })
-            DropdownMenuItem(text = { Text("Add to queue") }, onClick = { menuOpen = false; onAddToQueue(track) })
-            DropdownMenuItem(text = { Text("Add to playlist…") }, onClick = { menuOpen = false; onAddToPlaylist(track) })
-            if (onEditTags != null) {
-                DropdownMenuItem(text = { Text("Edit tags\u2026") }, onClick = { menuOpen = false; onEditTags(track) })
-            }
-            DropdownMenuItem(text = { Text("Track info") }, onClick = { menuOpen = false; onShowInfo(track) })
-            if (onRemove != null) {
-                HorizontalDivider()
-                DropdownMenuItem(
-                    text = { Text("Remove from library", color = MaterialTheme.colorScheme.error) },
-                    onClick = { menuOpen = false; onRemove(track) },
+        Box {
+            AtlasIconButton(text = "More options", onClick = { menuOpen = true }) {
+                Icon(
+                    imageVector = Icons.Filled.MoreVert,
+                    contentDescription = "Track options",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(text = { Text("Play next") }, onClick = { menuOpen = false; onPlayNext(track) })
+                DropdownMenuItem(text = { Text("Add to queue") }, onClick = { menuOpen = false; onAddToQueue(track) })
+                DropdownMenuItem(text = { Text("Add to playlist…") }, onClick = { menuOpen = false; onAddToPlaylist(track) })
+                if (onEditTags != null) {
+                    DropdownMenuItem(text = { Text("Edit tags\u2026") }, onClick = { menuOpen = false; onEditTags(track) })
+                }
+                DropdownMenuItem(text = { Text("Track info") }, onClick = { menuOpen = false; onShowInfo(track) })
+                if (onRemove != null) {
+                    HorizontalDivider()
+                    DropdownMenuItem(
+                        text = { Text("Remove from library", color = MaterialTheme.colorScheme.error) },
+                        onClick = { menuOpen = false; onRemove(track) },
+                    )
+                }
             }
         }
     }

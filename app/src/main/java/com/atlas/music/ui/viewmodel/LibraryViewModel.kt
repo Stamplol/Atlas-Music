@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class LibraryUiState(
@@ -48,8 +49,13 @@ class LibraryViewModel : ViewModel() {
 
     init {
         viewModelScope.launch {
-            repo.observeTrackCount().collect { count ->
-                _state.value = _state.value.copy()
+            runCatching { ServiceLocator.settings.settings.first().defaultSort }.getOrNull()?.let { savedSort ->
+                _sort.value = savedSort
+            }
+        }
+        viewModelScope.launch {
+            _sort.collect { currentSort ->
+                _state.value = _state.value.copy(sort = currentSort)
             }
         }
         viewModelScope.launch {

@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -46,6 +47,13 @@ class DownloadsViewModel : ViewModel() {
     val state: StateFlow<DownloadsUiState> = _state.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            val defaultFmt = runCatching { ServiceLocator.settings.settings.first().downloadFormat }.getOrDefault("opus")
+            if (defaultFmt in listOf("opus", "m4a", "best")) {
+                _state.value = _state.value.copy(format = defaultFmt)
+            }
+            withContext(Dispatchers.IO) { runCatching { manager.recoverInterrupted() } }
+        }
         viewModelScope.launch {
             manager.tasks.collect { tasks -> _state.value = _state.value.copy(tasks = tasks) }
         }

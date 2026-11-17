@@ -2,7 +2,10 @@ package com.atlas.music.ui.screens
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ModalBottomSheet
@@ -14,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.atlas.music.data.db.TrackEntity
 import com.atlas.music.util.Format
+import com.atlas.music.util.MediaFormatHelper
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -28,7 +32,13 @@ fun TrackInfoSheet(
     onEditTags: ((TrackEntity) -> Unit)? = null,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp, vertical = 4.dp),
+        ) {
             Text(track.title, style = MaterialTheme.typography.titleLarge)
             Text(track.artist, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (onEditTags != null) {
@@ -40,7 +50,7 @@ fun TrackInfoSheet(
             InfoRow("Year", track.year.takeIf { it > 0 }?.toString() ?: "Unknown")
             InfoRow("Track", listOfNotNull(track.discNumber.takeIf { it > 1 }?.let { "Disc $it" }, track.trackNumber.takeIf { it > 0 }?.let { "Track $it" }).joinToString(" · ").ifBlank { "—" })
             InfoRow("Duration", Format.duration(track.durationMs))
-            InfoRow("Format", track.mimeType.ifBlank { "audio" }.uppercase().removePrefix("AUDIO/"))
+            InfoRow("Format", MediaFormatHelper.displayAudioFormatLabel(track.mimeType, track.displayName))
             InfoRow("Size", Format.bytes(track.sizeBytes))
             InfoRow("Folder", track.folder)
             InfoRow("Added", SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(track.dateAddedSec * 1000)))

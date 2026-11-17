@@ -48,12 +48,13 @@ fun StudioHeader(label: String, trailing: String? = null) {
 
 @Composable
 fun EqPresetTile(name: String, selected: Boolean, onClick: () -> Unit) {
-    val barColor = if (selected) GOLD else MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
+    val accent = MaterialTheme.colorScheme.primary
+    val barColor = if (selected) accent else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .clip(RoundedCornerShape(14.dp))
-            .background(if (selected) GOLD.copy(alpha = 0.10f) else Color.Transparent)
+            .background(if (selected) accent.copy(alpha = 0.12f) else Color.Transparent)
             .clickable(onClick = onClick)
             .padding(horizontal = 8.dp, vertical = 6.dp),
     ) {
@@ -92,13 +93,15 @@ fun FocusRing(
     displayMs: Long,
     stateWord: String,
 ) {
+    val accent = MaterialTheme.colorScheme.primary
+    val trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     androidx.compose.foundation.layout.Box(modifier = modifier.size(sizeDp), contentAlignment = Alignment.Center) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val stroke = 11.dp.toPx()
             val inset = stroke / 2f
             val arcSize = size * (1f - stroke / size.width)
             drawArc(
-                color = Color(0x14FFFFFF),
+                color = trackColor,
                 startAngle = 0f,
                 sweepAngle = 360f,
                 useCenter = false,
@@ -108,7 +111,7 @@ fun FocusRing(
             )
             if (fraction > 0f) {
                 drawArc(
-                    color = GOLD,
+                    color = accent,
                     startAngle = -90f,
                     sweepAngle = 360f * fraction,
                     useCenter = false,
@@ -137,17 +140,19 @@ fun formatMs(ms: Long): String {
 @Composable
 fun WeekBars(days: List<Pair<String, Int>>, modifier: Modifier = Modifier) {
     val maxMin = days.maxOfOrNull { it.second }?.coerceAtLeast(1) ?: 1
+    val accent = MaterialTheme.colorScheme.primary
+    val emptyBarColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
         days.forEach { (label, minutes) ->
             Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (minutes > 0) {
-                    Text("$minutes", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    Text("$minutes", style = MaterialTheme.typography.labelSmall, color = accent)
                 }
                 Canvas(modifier = Modifier.fillMaxWidth().height(56.dp)) {
                     val barHeight = (minutes.toFloat() / maxMin) * size.height
                     val radius = 4.dp.toPx()
                     drawRoundRect(
-                        color = if (minutes > 0) GOLD else Color(0x14FFFFFF),
+                        color = if (minutes > 0) accent else emptyBarColor,
                         topLeft = androidx.compose.ui.geometry.Offset(size.width * 0.25f, size.height - barHeight.coerceAtLeast(2.dp.toPx())),
                         size = androidx.compose.ui.geometry.Size(size.width * 0.5f, barHeight.coerceAtLeast(2.dp.toPx())),
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius),

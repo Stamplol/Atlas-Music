@@ -258,10 +258,30 @@ class ToolsViewModel : ViewModel() {
     fun clearSleepTimer() = ServiceLocator.playbackConnection.clearSleepTimer()
     fun setCrossfade(enabled: Boolean) = viewModelScope.launch { settingsRepo.setCrossfade(enabled) }
     fun setCrossfadeSeconds(seconds: Int) = viewModelScope.launch { settingsRepo.setCrossfadeSeconds(seconds) }
+    fun setEqualizerEnabled(enabled: Boolean) = viewModelScope.launch { settingsRepo.setEqualizer(enabled) }
     fun setNormalization(enabled: Boolean) = viewModelScope.launch { settingsRepo.setNormalization(enabled) }
     fun setBassBoost(enabled: Boolean) = viewModelScope.launch { settingsRepo.setBassBoost(enabled) }
     fun setBassBoostStrength(percent: Int) = viewModelScope.launch { settingsRepo.setBassBoostStrength(percent) }
     fun setLoudnessGainMb(gainMb: Int) = viewModelScope.launch { settingsRepo.setLoudnessGainMb(gainMb) }
+    fun setHeadphoneProfile(id: String) = viewModelScope.launch {
+        settingsRepo.setHeadphoneProfile(id)
+        if (id.isNotBlank()) settingsRepo.setEqualizer(true)
+        val name = com.atlas.music.util.HeadphoneProfiles.byId(id)?.displayName ?: "None"
+        _state.value = _state.value.copy(lastEvent = "Headphones: $name")
+    }
+    fun setPreampDb(db: Float) = viewModelScope.launch { settingsRepo.setPreampDb(db) }
+    fun setAutoHeadroom(enabled: Boolean) = viewModelScope.launch { settingsRepo.setAutoHeadroom(enabled) }
+    fun setVirtualizerStrength(percent: Int) = viewModelScope.launch {
+        settingsRepo.setVirtualizerStrength(percent)
+        if (percent > 0) settingsRepo.setEqualizer(true)
+    }
+    fun setChannelBalance(balance: Float) = viewModelScope.launch { settingsRepo.setChannelBalance(balance) }
+    fun setLimiterEnabled(enabled: Boolean) = viewModelScope.launch { settingsRepo.setLimiterEnabled(enabled) }
+    fun setSoundCheck(warmth: Float, punch: Float) = viewModelScope.launch {
+        settingsRepo.setSoundCheck(warmth, punch)
+        settingsRepo.setEqualizer(true)
+    }
+    fun resetSoundCheck() = viewModelScope.launch { settingsRepo.setSoundCheck(0f, 0f) }
     /** Reset every audio knob: presets off, bass boost off, loudness off, crossfade off, speed 1×. */
     fun resetAudio() = viewModelScope.launch {
         settingsRepo.resetAudio()

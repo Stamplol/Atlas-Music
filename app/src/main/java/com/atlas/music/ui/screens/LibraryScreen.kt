@@ -18,13 +18,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.QueueMusic
-import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -87,9 +88,10 @@ fun LibraryScreen(
     onOpenPlaylist: (Long) -> Unit,
     onOpenSmart: (SmartPlaylist) -> Unit,
     onOpenDuplicates: () -> Unit,
+    initialTab: Int = 0,
     modifier: Modifier = Modifier,
 ) {
-    var tab by remember { mutableStateOf(0) }
+    var tab by remember(initialTab) { mutableStateOf(initialTab.coerceIn(0, 5)) }
     var sortMenuOpen by remember { mutableStateOf(false) }
     var showCreatePlaylist by remember { mutableStateOf(false) }
     val state by viewModel.state.collectAsState()
@@ -100,16 +102,18 @@ fun LibraryScreen(
             modifier = Modifier.statusBarsPadding(),
             colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             actions = {
-                Box {
-                    AtlasIconButton(text = "{ sortMenuOpen = true }", onClick = { sortMenuOpen = true }) {
-                        Icon(Icons.Filled.Sort, contentDescription = "Sort library")
-                    }
-                    DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
-                        SortOption.entries.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option.label, color = if (option == sort) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) },
-                                onClick = { sortMenuOpen = false; onSetSort(option) },
-                            )
+                if (tab == 0) {
+                    Box {
+                        AtlasIconButton(text = "Sort tracks", onClick = { sortMenuOpen = true }) {
+                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort library")
+                        }
+                        DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
+                            SortOption.entries.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option.label, color = if (option == sort) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) },
+                                    onClick = { sortMenuOpen = false; onSetSort(option) },
+                                )
+                            }
                         }
                     }
                 }
@@ -119,13 +123,12 @@ fun LibraryScreen(
         ScrollableTabRow(
             selectedTabIndex = tab,
             containerColor = MaterialTheme.colorScheme.surface,
-            edgePadding = 0.dp,
+            edgePadding = 12.dp,
         ) {
             tabs.forEachIndexed { index, label ->
                 Tab(
                     selected = tab == index,
                     onClick = { tab = index },
-                    modifier = Modifier.width(88.dp),
                     text = {
                         Text(
                             label,
@@ -140,16 +143,41 @@ fun LibraryScreen(
         }
 
         when (tab) {
-            0 -> TrackListContent(
-                tracks = tracks,
-                onPlay = { track, _ -> onPlay(track, tracks, tracks.indexOf(track)) },
-                onToggleFavorite = onToggleFavorite,
-                onPlayNext = onPlayNext,
-                onAddToQueue = onAddToQueue,
-                onAddToPlaylist = onAddToPlaylist,
-                onShowInfo = onShowInfo,
-            onEditTags = onEditTags,
-            )
+            0 -> Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                if (tracks.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            "${tracks.size} ${if (tracks.size == 1) "song" else "songs"} · ${sort.label}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        FilledTonalButton(
+                            onClick = {
+                                val shuffled = tracks.shuffled()
+                                onPlay(shuffled.first(), shuffled, 0)
+                            },
+                        ) {
+                            Icon(Icons.Filled.Shuffle, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Shuffle all")
+                        }
+                    }
+                }
+                TrackListContent(
+                    tracks = tracks,
+                    onPlay = { track, _ -> onPlay(track, tracks, tracks.indexOf(track)) },
+                    onToggleFavorite = onToggleFavorite,
+                    onPlayNext = onPlayNext,
+                    onAddToQueue = onAddToQueue,
+                    onAddToPlaylist = onAddToPlaylist,
+                    onShowInfo = onShowInfo,
+                    onEditTags = onEditTags,
+                )
+            }
             1 -> CountList(
                 items = state.albumCounts.map { it.name to it.count },
                 emptyTitle = "No albums found",
@@ -262,15 +290,16 @@ private fun PlaylistsList(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Smart playlists", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                TextButton(onClick = onCreate) {
-                    Icon(Icons.Filled.Add, contentDescription = null)
+                Text("Auto mixes", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                FilledTonalButton(onClick = onCreate) {
+                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
                     Text("New playlist")
                 }
             }
         }
         items(SmartPlaylist.entries, key = { "smart-${it.name}" }) { smart ->
-            CollectionRow(title = smart.label, subtitle = "Updates itself", icon = Icons.Filled.QueueMusic) { onOpenSmart(smart) }
+            CollectionRow(title = smart.label, subtitle = "Updates automatically", icon = Icons.AutoMirrored.Filled.QueueMusic) { onOpenSmart(smart) }
         }
         item {
             Text(
@@ -281,7 +310,7 @@ private fun PlaylistsList(
             )
         }
         items(playlists, key = { "playlist-${it.id}" }) { playlist ->
-            CollectionRow(title = playlist.name, subtitle = playlist.description.ifBlank { "Playlist" }, icon = Icons.Filled.QueueMusic) { onOpenPlaylist(playlist.id) }
+            CollectionRow(title = playlist.name, subtitle = playlist.description.ifBlank { "Playlist" }, icon = Icons.AutoMirrored.Filled.QueueMusic) { onOpenPlaylist(playlist.id) }
         }
         item {
             CollectionRow(
@@ -298,7 +327,7 @@ private fun PlaylistsList(
 private fun CollectionRow(
     title: String,
     subtitle: String,
-    icon: ImageVector = Icons.Filled.PlaylistAdd,
+    icon: ImageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
     onClick: () -> Unit,
 ) {
     Row(

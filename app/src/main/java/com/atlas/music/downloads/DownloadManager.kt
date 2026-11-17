@@ -344,6 +344,24 @@ class DownloadManager(
     fun isCancellationRequested(taskId: Long) = taskId in cancelRequested
     fun consumeCancellation(taskId: Long) = cancelRequested.remove(taskId)
 
+    /** Mark any tasks left active from an abrupt process kill as retryable failures, and resume queued work. */
+    suspend fun recoverInterrupted() {
+        val acquired = processing.tryLock()
+        if (!acquired) return
+        val hasQueued = try {
+            val count = dao.markInterruptedFailed("Interrupted. Tap retry to try again.", System.currentTimeMillis())
+            if (count > 0) {
+                android.util.Log.w("DownloadManager", "Recovered $count interrupted download task(s)")
+            }
+            dao.hasQueued()
+        } finally {
+            processing.unlock()
+        }
+        if (hasQueued) {
+            DownloadForegroundService.start(context)
+        }
+    }
+
     /** Process the queue sequentially. Called only from DownloadForegroundService. */
     suspend fun processQueue(onProgress: (DownloadTaskEntity) -> Unit) {
         processing.withLock {
@@ -432,12 +450,19 @@ class DownloadManager(
         val downloadGenres = meta?.optJSONArray("genres")
         val downloadGenre = downloadGenres?.optString(0)?.takeIf { it.isNotBlank() } ?: ""
         // Cover art: preview thumbnail URL (passed through the task), else what yt-dlp fetched.
+        val thumbArr = meta?.optJSONArray("thumbnails")
+        val lastThumbUrl = if (thumbArr != null && thumbArr.length() > 0) {
+            thumbArr.optJSONObject(thumbArr.length() - 1)?.optString("url")?.takeIf { it.isNotBlank() }
+        } else null
         val coverUrl = meta?.optString("thumbnail")?.takeIf { it.isNotBlank() }
             ?: initial.thumbnailUrl.takeIf { it.isNotBlank() }
-            ?: meta?.optJSONArray("thumbnails")?.optJSONObject(meta.optJSONArray("thumbnails").length() - 1)?.optString("url")
-        // Year from upload_date (yyyyMMdd) when present.
+            ?: lastThumbUrl
+        // Year from upload_date (yyyyMMdd) when present, plus duration fallback in ms.
         val uploadDate = meta?.optString("upload_date")?.takeIf { it.length >= 4 }
         val downloadYear = uploadDate?.take(4)?.toIntOrNull() ?: 0
+        val downloadDurationMs = meta?.optDouble("duration", 0.0)
+            ?.takeIf { !it.isNaN() && it > 0.0 }
+            ?.let { (it * 1000.0).toLong() } ?: 0L
         // Write tags first, then embed artwork. Both are best-effort and log their own outcome.
         val tagResult = runCatching { pythonBridge.writeTags(tempPath, downloadTitle, downloadArtist, "", downloadGenre, downloadYear, 0, 0) }
         tagResult.onSuccess { r -> android.util.Log.i("AtlasTags", "write_tags -> ok=${r.optBoolean("ok")} err=${r.optString("error")} artist=$downloadArtist genre=$downloadGenre year=$downloadYear") }
@@ -449,7 +474,15 @@ class DownloadManager(
         } else {
             android.util.Log.i("AtlasTags", "no cover url to embed (downloadTitle=$downloadTitle, initial thumb=${initial.thumbnailUrl.take(60)}, meta thumb=${meta?.optString("thumbnail")?.take(60)})")
         }
-        val finalPath = moveIntoLibrary(taskDir, tempPath, initial, downloadTitle)
+        val finalPath = moveIntoLibrary(
+            taskDir = taskDir,
+            tempPath = tempPath,
+            title = downloadTitle,
+            artist = downloadArtist,
+            genre = downloadGenre,
+            year = downloadYear,
+            durationMs = downloadDurationMs,
+        )
         if (finalPath == null) {
             failTask(taskId, "Couldn't save the downloaded file into your music folder.", onProgress)
             taskDir.deleteRecursively()
@@ -467,7 +500,22 @@ class DownloadManager(
         val autoImport = settingsRepository.settings.first().autoImportDownloads
         if (autoImport) {
             val st = settingsRepository.settings.first()
-            runCatching { musicRepository.scan(st.excludedFolders, includeUnsupported = true, customFolderUri = st.musicFolderUri.takeIf { it.isNotBlank() }, customFolderOnly = st.musicFolderOnly) }
+            runCatching {
+                musicRepository.scan(
+                    st.excludedFolders,
+                    includeUnsupported = true,
+                    customFolderUri = st.musicFolderUri.takeIf { it.isNotBlank() },
+                    customFolderOnly = st.musicFolderOnly,
+                )
+                musicRepository.applyDownloadMetadata(
+                    uri = finalPath,
+                    title = downloadTitle,
+                    artist = downloadArtist,
+                    genre = downloadGenre,
+                    year = downloadYear,
+                    durationMs = downloadDurationMs,
+                )
+            }
         }
     }
 
@@ -485,34 +533,70 @@ class DownloadManager(
     private suspend fun moveIntoLibrary(
         taskDir: java.io.File,
         tempPath: String,
-        task: DownloadTaskEntity,
         title: String,
+        artist: String,
+        genre: String,
+        year: Int,
+        durationMs: Long,
     ): String? {
         val source = java.io.File(tempPath).takeIf { it.isFile }
             ?: taskDir.listFiles()?.maxByOrNull { it.lastModified() }?.takeIf { it.isFile }
             ?: return null
         val destUri = settingsRepository.settings.first().downloadDestinationUri
         return if (destUri.isBlank()) {
-            moveToMediaStore(source, title)
+            moveToMediaStore(source, title, artist, genre, year, durationMs)
         } else {
             moveToSafTree(source, destUri, title)
         }
     }
 
-    private fun moveToMediaStore(source: java.io.File, title: String): String? {
-        val ext = source.extension.ifBlank { "opus" }
+    private fun readHeaderBytes(source: java.io.File): ByteArray? = runCatching {
+        source.inputStream().use { stream ->
+            val buf = ByteArray(16)
+            val n = stream.read(buf)
+            if (n > 0) buf.copyOf(n) else null
+        }
+    }.getOrNull()
+
+    private fun moveToMediaStore(
+        source: java.io.File,
+        title: String,
+        artist: String,
+        genre: String,
+        year: Int,
+        durationMs: Long,
+    ): String? {
+        val ext = com.atlas.music.util.MediaFormatHelper.normalizeDownloadExtension(
+            sourceExtension = source.extension,
+            headerBytes = readHeaderBytes(source),
+        )
+        val mime = com.atlas.music.util.MediaFormatHelper.mediaStoreMimeForExtension(ext)
         val safeTitle = title.replace(Regex("[/\\\\:*?\"<>|]"), "_").take(80)
         val displayName = "$safeTitle [atlas].$ext"
         val resolver = context.contentResolver
         val values = android.content.ContentValues().apply {
             put(android.provider.MediaStore.Audio.Media.DISPLAY_NAME, displayName)
-            put(android.provider.MediaStore.Audio.Media.MIME_TYPE, mimeForExtension(ext))
+            put(android.provider.MediaStore.Audio.Media.MIME_TYPE, mime)
             put(android.provider.MediaStore.Audio.Media.RELATIVE_PATH, "Music/Atlas Music")
             put(android.provider.MediaStore.Audio.Media.IS_PENDING, 1)
+            put(android.provider.MediaStore.Audio.Media.IS_MUSIC, 1)
             put(android.provider.MediaStore.Audio.Media.TITLE, title)
+            artist.trim().takeIf { it.isNotBlank() && it != "Unknown uploader" }?.let {
+                put(android.provider.MediaStore.Audio.Media.ARTIST, it)
+            }
+            genre.trim().takeIf { it.isNotBlank() }?.let {
+                put(android.provider.MediaStore.Audio.Media.GENRE, it)
+            }
+            if (year in 1900..2100) {
+                put(android.provider.MediaStore.Audio.Media.YEAR, year)
+            }
+            if (durationMs > 0L) {
+                put(android.provider.MediaStore.Audio.Media.DURATION, durationMs)
+            }
         }
-        val uri = resolver.insert(android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values) ?: return null
+        var uri: android.net.Uri? = null
         return try {
+            uri = resolver.insert(android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values) ?: return null
             resolver.openOutputStream(uri)?.use { out -> source.inputStream().use { it.copyTo(out) } }
                 ?: throw IllegalStateException("Unable to open destination stream")
             val done = android.content.ContentValues().apply {
@@ -521,7 +605,8 @@ class DownloadManager(
             resolver.update(uri, done, null, null)
             uri.toString()
         } catch (e: Exception) {
-            runCatching { resolver.delete(uri, null, null) }
+            android.util.Log.e("DownloadManager", "moveToMediaStore failed for $displayName ($mime)", e)
+            uri?.let { runCatching { resolver.delete(it, null, null) } }
             null
         }
     }
@@ -530,27 +615,28 @@ class DownloadManager(
         val tree = android.net.Uri.parse(treeUri)
         val resolver = context.contentResolver
         val root = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, tree) ?: return null
-        val ext = source.extension.ifBlank { "opus" }
+        val ext = com.atlas.music.util.MediaFormatHelper.normalizeDownloadExtension(
+            sourceExtension = source.extension,
+            headerBytes = readHeaderBytes(source),
+        )
+        val mime = com.atlas.music.util.MediaFormatHelper.mediaStoreMimeForExtension(ext)
         val safeTitle = title.replace(Regex("[/\\\\:*?\"<>|]"), "_").take(80)
-        val doc = root.createFile(mimeForExtension(ext), "$safeTitle [atlas].$ext") ?: return null
         return try {
-            resolver.openOutputStream(doc.uri)?.use { out -> source.inputStream().use { it.copyTo(out) } }
-                ?: return null
-            doc.uri.toString()
+            val doc = root.createFile(mime, "$safeTitle [atlas].$ext") ?: return null
+            try {
+                resolver.openOutputStream(doc.uri)?.use { out -> source.inputStream().use { it.copyTo(out) } }
+                    ?: run {
+                        runCatching { doc.delete() }
+                        return null
+                    }
+                doc.uri.toString()
+            } catch (e: Exception) {
+                runCatching { doc.delete() }
+                null
+            }
         } catch (e: Exception) {
-            runCatching { doc.delete() }
+            android.util.Log.e("DownloadManager", "moveToSafTree failed", e)
             null
         }
-    }
-
-    private fun mimeForExtension(ext: String): String = when (ext.lowercase()) {
-        "opus", "ogg" -> "audio/ogg"
-        "webm" -> "audio/webm"
-        "m4a", "mp4" -> "audio/mp4"
-        "mp3" -> "audio/mpeg"
-        "flac" -> "audio/flac"
-        "wav" -> "audio/wav"
-        "aac" -> "audio/aac"
-        else -> "audio/*"
     }
 }

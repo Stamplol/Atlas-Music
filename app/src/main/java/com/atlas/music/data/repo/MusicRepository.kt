@@ -419,6 +419,41 @@ class MusicRepository(private val context: Context, private val db: AtlasDatabas
         return Triple(added, updated, skipped)
     }
 
+    /**
+     * Backfill missing metadata on a freshly downloaded track when MediaStore
+     * hasn't parsed tags or duration (for example, Matroska/WebM Opus containers).
+     */
+    suspend fun applyDownloadMetadata(
+        uri: String,
+        title: String,
+        artist: String,
+        genre: String,
+        year: Int,
+        durationMs: Long,
+    ) {
+        val current = trackDao.byUri(uri) ?: return
+        val resolvedTitle = current.title.takeIf { it.isNotBlank() && it != "Unknown title" }
+            ?: title.trim().ifBlank { current.title }
+        val cleanArtist = artist.trim().takeIf { it.isNotBlank() && it != "Unknown uploader" }
+        val resolvedArtist = if (current.artist == "Unknown artist" && cleanArtist != null) cleanArtist else current.artist
+        val cleanGenre = genre.trim().takeIf { it.isNotBlank() }
+        val resolvedGenre = if (current.genre == "Unknown genre" && cleanGenre != null) cleanGenre else current.genre
+        val resolvedYear = if (current.year == 0 && year in 1900..2100) year else current.year
+        val resolvedDuration = if (current.durationMs <= 0L && durationMs > 0L) durationMs else current.durationMs
+        val resolved = current.copy(
+            title = resolvedTitle,
+            artist = resolvedArtist,
+            albumArtist = resolvedArtist,
+            genre = resolvedGenre,
+            year = resolvedYear,
+            durationMs = resolvedDuration,
+            fingerprint = DuplicateDetector.fingerprint(resolvedTitle, resolvedArtist, resolvedDuration),
+        )
+        if (resolved != current) {
+            trackDao.update(resolved)
+        }
+    }
+
     suspend fun setFavorite(trackId: Long, favorite: Boolean) = trackDao.setFavorite(trackId, favorite)
 
     /** Update editable tags in the library DB (title/artist/album/genre/year/track/disc). */

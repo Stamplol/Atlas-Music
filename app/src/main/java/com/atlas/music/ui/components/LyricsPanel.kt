@@ -14,9 +14,13 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Surface
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -60,21 +64,25 @@ import kotlinx.coroutines.withContext
  */
 @Composable
 fun LyricsPanel(
-    track: TrackEntity,
+    track: TrackEntity?,
     positionMs: Long,
     onClose: () -> Unit,
+    onSeekTo: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    // Three-state: loading → loaded(lines) / empty (null from repo)
-    var loaded by remember(track.id) { mutableStateOf<List<LyricLine>?>(null) }
-    var source by remember(track.id) { mutableStateOf("") }
-    var done by remember(track.id) { mutableStateOf(false) }
+    var loaded by remember(track?.id) { mutableStateOf<List<LyricLine>?>(null) }
+    var source by remember(track?.id) { mutableStateOf("") }
+    var done by remember(track?.id) { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
-    LaunchedEffect(track.id) {
-        if (done) return@LaunchedEffect
+    LaunchedEffect(track?.id) {
         done = false
+        if (track == null) {
+            loaded = emptyList()
+            source = ""
+            done = true
+            return@LaunchedEffect
+        }
         val res = withContext(Dispatchers.IO) {
             ServiceLocator.lyricsRepository.lyricsFor(track)
         }
@@ -90,13 +98,26 @@ fun LyricsPanel(
         listState.animateScrollToItem(idx.coerceAtLeast(0))
     }
 
-    Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Row(modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            AtlasIconButton(text = "Close lyrics", onClick = onClose) { Icon(Icons.Filled.Close, contentDescription = "Close lyrics") }
-            Spacer(Modifier.weight(1f))
-            Text("LYRICS", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.weight(1f))
-            TextButton(onClick = {}) { Text(source.ifBlank { "unknown" }) }
+    Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).navigationBarsPadding()) {
+        Box(modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 4.dp)) {
+            AtlasIconButton(text = "Close lyrics", onClick = onClose, modifier = Modifier.align(Alignment.CenterStart)) {
+                Icon(Icons.Filled.Close, contentDescription = "Close lyrics")
+            }
+            Text("LYRICS", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.align(Alignment.Center))
+            if (source.isNotBlank()) {
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 6.dp),
+                ) {
+                    Text(
+                        source,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
+            }
         }
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when {
@@ -108,8 +129,9 @@ fun LyricsPanel(
                 loaded == null || loaded!!.isEmpty() -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center, modifier = Modifier.fillMaxSize().padding(32.dp)) {
                     Text("No lyrics found", style = MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.height(8.dp))
+                    val sampleName = track?.displayName?.substringBeforeLast('.')?.takeIf { it.isNotBlank() } ?: "song"
                     Text(
-                        "This track doesn't ship embedded lyrics and there's no .lrc file next to it.\nDrop a file named like the track (e.g. ${track.displayName.substringBeforeLast('.')}.lrc) into the same folder and hit rescan.",
+                        "This track doesn't ship embedded lyrics and there's no .lrc file next to it.\nDrop a file named like the track (e.g. $sampleName.lrc) into the same folder and hit rescan.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -120,7 +142,12 @@ fun LyricsPanel(
                     val raw = list.all { it.timeMs == 0L }
                     // Locate current line
                     val activeIdx = if (raw) -1 else list.indexOfLast { it.timeMs <= positionMs }.coerceAtLeast(0)
-                    LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
                         itemsIndexed(list) { index, line ->
                             val isCurrent = index == activeIdx
                             Text(
@@ -128,9 +155,12 @@ fun LyricsPanel(
                                 style = if (raw) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.titleLarge,
                                 fontSize = if (isCurrent) 22.sp else 16.sp,
                                 fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                                color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f),
                                 textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth().clickable { }.padding(vertical = 4.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .then(if (!raw) Modifier.clickable { onSeekTo(line.timeMs) } else Modifier)
+                                    .padding(vertical = 4.dp),
                             )
                         }
                     }

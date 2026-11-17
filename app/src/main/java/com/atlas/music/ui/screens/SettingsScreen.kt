@@ -6,6 +6,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -48,6 +50,8 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -63,7 +67,7 @@ import com.atlas.music.util.ArtworkStyle
 import com.atlas.music.util.SortOption
 import com.atlas.music.util.ThemeMode
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
@@ -113,21 +117,32 @@ fun SettingsScreen(
         }
     }
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 120.dp),
-    ) {
-        item { TopAppBar(title = { Text("Settings", fontWeight = FontWeight.ExtraBold) }, modifier = Modifier.statusBarsPadding(), colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)) }
-
+    Column(modifier = modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text("Settings", fontWeight = FontWeight.ExtraBold) },
+            modifier = Modifier.statusBarsPadding(),
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+        )
+        LazyColumn(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 120.dp),
+        ) {
         item { SettingsGroup("Appearance") }
         item {
-            SettingsRow("Theme", "Atlas signature by default — me-when-music presets below") {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp).horizontalScroll(rememberScrollState())) {
+            SettingsRow("Theme", "Atlas signature dark & light, plus curated presets") {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.padding(bottom = 6.dp),
+                ) {
                     listOf(ThemeMode.SYSTEM, ThemeMode.DARK, ThemeMode.LIGHT).forEach { mode ->
                         FilterChip(selected = settings.themeMode == mode, onClick = { viewModel.setTheme(mode) }, label = { Text(mode.label, maxLines = 1) })
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
                     ThemeMode.entries.filter { it !in listOf(ThemeMode.SYSTEM, ThemeMode.DARK, ThemeMode.LIGHT) }.forEach { mode ->
                         FilterChip(selected = settings.themeMode == mode, onClick = { viewModel.setTheme(mode) }, label = { Text(mode.label, maxLines = 1) })
                     }
@@ -163,25 +178,30 @@ fun SettingsScreen(
                 }
             }
         }
+        if (settings.ipodModeUnlocked) {
+            item {
+                SwitchRow(
+                    title = "Classic iPod mode",
+                    subtitle = "Full-screen tactile click wheel & LCD player",
+                    checked = settings.ipodModeEnabled,
+                    onCheckedChange = viewModel::setIpodModeEnabled,
+                )
+            }
+        }
 
-        item { SettingsGroup("Background engine") }
+        item { SettingsGroup("Now Playing visualizer") }
         item {
-            SettingsRow("Mode", "Live canvas behind Now Playing (bg.js port, morph excluded)") {
-                androidx.compose.foundation.layout.Column {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp).horizontalScroll(rememberScrollState())) {
-                        listOf("wave", "conway", "boids", "dunes", "starfield").forEach { id ->
-                            FilterChip(selected = settings.backgroundMode == id, onClick = { viewModel.setBackgroundMode(id) }, label = { Text(id, maxLines = 1) })
-                        }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp).horizontalScroll(rememberScrollState())) {
-                        listOf("maze", "sort", "matrix", "flow", "lorenz").forEach { id ->
-                            FilterChip(selected = settings.backgroundMode == id, onClick = { viewModel.setBackgroundMode(id) }, label = { Text(id, maxLines = 1) })
-                        }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("pendulum", "plasma", "langton", "off").forEach { id ->
-                            FilterChip(selected = settings.backgroundMode == id, onClick = { viewModel.setBackgroundMode(id) }, label = { Text(id, maxLines = 1) })
-                        }
+            SettingsRow("Visualizer", "Animated canvas behind Now Playing") {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    listOf(
+                        "wave", "conway", "boids", "dunes", "starfield",
+                        "maze", "sort", "matrix", "flow", "lorenz",
+                        "pendulum", "plasma", "langton", "off",
+                    ).forEach { id ->
+                        FilterChip(selected = settings.backgroundMode == id, onClick = { viewModel.setBackgroundMode(id) }, label = { Text(id, maxLines = 1) })
                     }
                 }
             }
@@ -197,13 +217,16 @@ fun SettingsScreen(
                 SliderRow(label = "Trails", value = settings.backgroundTrail.toFloat(), valueRange = 1f..95f, steps = 8, onValueChange = { viewModel.setBackgroundTrail(it.toInt()) }, valueLabel = settings.backgroundTrail.toString())
             }
             item {
-                SwitchRow(title = "Audio reactive", subtitle = "Sim breathes with bass/energy", checked = settings.backgroundReact, onCheckedChange = viewModel::setBackgroundReact)
+                SwitchRow(title = "Move with the beat", subtitle = "Visualizer reacts gently to bass & rhythm", checked = settings.backgroundReact, onCheckedChange = viewModel::setBackgroundReact)
             }
         }
         if (settings.backgroundMode == "sort") {
             item {
-                SettingsRow("Sort algorithm", "Pick one, or random each run") {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SettingsRow("Pattern style", "Pick a visual sorting animation") {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
                         listOf("random", "bubble", "quick", "merge", "insertion").forEach { id ->
                             FilterChip(selected = settings.sortAlgo == id, onClick = { viewModel.setSortAlgo(id) }, label = { Text(id, maxLines = 1) })
                         }
@@ -267,15 +290,16 @@ fun SettingsScreen(
         }
         item {
             SettingsRow("Sleep timer default", "Used when you tap the sleep button in Now Playing") {
-                Row(
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.padding(bottom = 12.dp),
                 ) {
                     listOf(15, 30, 45, 60).forEach { minutes ->
                         FilterChip(
                             selected = settings.sleepTimerDefaultMinutes == minutes,
                             onClick = { viewModel.setSleepTimerDefault(minutes) },
-                            label = { Text("$minutes min") },
+                            label = { Text("$minutes min", maxLines = 1) },
                         )
                     }
                 }
@@ -285,15 +309,16 @@ fun SettingsScreen(
         item { SettingsGroup("Library") }
         item {
             SettingsRow("Default sort", "Applied to the Songs tab") {
-                Row(
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.padding(bottom = 12.dp),
                 ) {
                     listOf(SortOption.TITLE, SortOption.ARTIST, SortOption.ALBUM, SortOption.DATE_ADDED).forEach { sort ->
                         FilterChip(
                             selected = settings.defaultSort == sort,
                             onClick = { viewModel.setDefaultSort(sort) },
-                            label = { Text(sort.label) },
+                            label = { Text(sort.label, maxLines = 1) },
                         )
                     }
                 }
@@ -303,20 +328,23 @@ fun SettingsScreen(
             ListItem(
                 headlineContent = { Text("Music folder") },
                 supportingContent = {
-                    if (settings.musicFolderUri.isBlank()) {
-                        Text("Automatic — scans every audio file on the device (MediaStore)")
-                    } else {
-                        Text("Custom: ${settings.musicFolderName.ifBlank { "folder" }}\nLimit to this folder only: ${if (settings.musicFolderOnly) "On" else "Off (also scans everywhere)"}")
-                    }
-                },
-                trailingContent = {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        if (settings.musicFolderUri.isNotBlank()) {
-                            TextButton(onClick = { viewModel.clearMusicFolder(); viewModel.rescan() }) { Text("Clear") }
+                    Column {
+                        if (settings.musicFolderUri.isBlank()) {
+                            Text("Automatic — scans every audio file on the device (MediaStore)")
+                        } else {
+                            Text("Custom: ${settings.musicFolderName.ifBlank { "folder" }}\nLimit to this folder only: ${if (settings.musicFolderOnly) "On" else "Off (also scans everywhere)"}")
                         }
-                        TextButton(onClick = { musicFolderPicker.launch(null) }) { Text("Change") }
+                        if (settings.musicFolderUri.isNotBlank()) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+                                OutlinedButton(onClick = { musicFolderPicker.launch(null) }) { Text("Change") }
+                                TextButton(onClick = { viewModel.clearMusicFolder(); viewModel.rescan() }) { Text("Clear") }
+                            }
+                        }
                     }
                 },
+                trailingContent = if (settings.musicFolderUri.isBlank()) {
+                    { TextButton(onClick = { musicFolderPicker.launch(null) }) { Text("Change") } }
+                } else null,
                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
             )
         }
@@ -426,16 +454,27 @@ fun SettingsScreen(
 
         item { SettingsGroup("Application") }
         item {
+            var verTaps by remember { mutableIntStateOf(0) }
+            var verLastMs by remember { mutableLongStateOf(0L) }
             ListItem(
                 headlineContent = { Text("Atlas Music") },
-                supportingContent = { Text("Version ${BuildConfig.VERSION_NAME}  ·  Ad-less Music.  ·  No accounts, no telemetry you didn't ask for") },
+                supportingContent = { Text("Version ${BuildConfig.VERSION_NAME}  ·  Ad-less Music.  ·  No accounts, no telemetry") },
+                modifier = Modifier.clickable {
+                    val now = System.currentTimeMillis()
+                    verTaps = if (now - verLastMs <= 2400L) verTaps + 1 else 1
+                    verLastMs = now
+                    if (verTaps >= 5) {
+                        verTaps = 0
+                        viewModel.setIpodModeEnabled(true)
+                    }
+                },
                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
             )
         }
         item {
             SwitchRow(
-                title = "Diagnostics",
-                subtitle = "Keep local scan/download error logs for troubleshooting (never uploaded)",
+                title = "Save troubleshooting logs",
+                subtitle = "Keep local scan and download error logs on your phone",
                 checked = settings.diagnosticsEnabled,
                 onCheckedChange = viewModel::setDiagnostics,
             )
@@ -458,6 +497,7 @@ fun SettingsScreen(
                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
             )
         }
+    }
     }
 
     if (showExcludedInput) {
@@ -489,7 +529,7 @@ fun SettingsScreen(
             title = { Text("Open-source licenses") },
             text = {
                 Text(
-                    "Kotlin & AndroidX (Apache-2.0)\nJetpack Compose & Material 3 (Apache-2.0)\nMedia3 / ExoPlayer (Apache-2.0)\nRoom (Apache-2.0)\nCoil (Apache-2.0)\nOkHttp (Apache-2.0)\nDesugar JDK libs (GPL-2.0 with Classpath Exception)\nChaquopy (MIT)\nyt-dlp (Unlicense)\nmutagen (GPL-2.0)\nTensorFlow Lite — not included\n\nFull texts live in each project's repository. Atlas Music itself is yours to audit — no obfuscated ads SDKs, no analytics.",
+                    "Kotlin & AndroidX (Apache-2.0)\nJetpack Compose & Material 3 (Apache-2.0)\nMedia3 / ExoPlayer (Apache-2.0)\nRoom (Apache-2.0)\nCoil (Apache-2.0)\nOkHttp (Apache-2.0)\nDesugar JDK libs (GPL-2.0 with Classpath Exception)\nChaquopy (MIT)\nyt-dlp (Unlicense)\nmutagen (GPL-2.0)\n\nFull texts live in each project's repository. Atlas Music itself is yours to audit — no obfuscated ads SDKs, no analytics.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             },
@@ -503,7 +543,7 @@ fun SettingsScreen(
             title = { Text("Privacy") },
             text = {
                 Text(
-                    "Atlas Music keeps your library, playlists, favorites, history and downloads on this device. It has no account system, no ads, no analytics SDK, and never uploads your listening data.\n\nInternetwork access happens only for two things you control: downloading authorized media through the link you paste, and checking the official yt-dlp release source for updates.\n\nPermission explanations: READ_MEDIA_AUDIO browses your own audio files; INTERNET is used solely for the two features above; notifications are for playback and download progress.",
+                    "Atlas Music keeps your library, playlists, favorites, history and downloads on this device. It has no account system, no ads, no analytics SDK, and never uploads your listening data.\n\nNetwork access happens only for two things you control: downloading authorized media through the link you paste, and checking the official yt-dlp release source for updates.\n\nPermission explanations: READ_MEDIA_AUDIO browses your own audio files; INTERNET is used solely for the two features above; notifications are for playback and download progress.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             },

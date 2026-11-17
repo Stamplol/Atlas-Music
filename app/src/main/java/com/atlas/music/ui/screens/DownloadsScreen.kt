@@ -7,11 +7,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentPaste
@@ -54,6 +58,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,7 +77,7 @@ import com.atlas.music.util.DownloadStateMachine
 import com.atlas.music.util.Format
 import java.util.Locale
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun DownloadsScreen(
     state: DownloadsUiState,
@@ -91,16 +98,25 @@ fun DownloadsScreen(
     onApplyUpdate: () -> Unit,
     onRestoreBundled: () -> Unit,
     onSetPlaylistMode: (Boolean) -> Unit,
+    onBack: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 120.dp),
-    ) {
-        item {
-            TopAppBar(title = { Text("Downloads", fontWeight = FontWeight.ExtraBold) }, modifier = Modifier.statusBarsPadding(), colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background))
-        }
+    Column(modifier = modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text("Downloads", fontWeight = FontWeight.ExtraBold) },
+            navigationIcon = {
+                AtlasIconButton(text = "Back", onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+            },
+            modifier = Modifier.statusBarsPadding(),
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+        )
+        LazyColumn(
+            modifier = Modifier.weight(1f).fillMaxWidth().navigationBarsPadding(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 32.dp),
+        ) {
 
         if (!state.ytdlpAvailable) {
             item {
@@ -184,6 +200,7 @@ fun DownloadsScreen(
 
         item { YtdlpCard(state, onCheckUpdate, onApplyUpdate, onRestoreBundled) }
         item { LegalNote() }
+    }
     }
 }
 
@@ -269,7 +286,14 @@ private fun SearchResultsCard(
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(6.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable { onConsentChange(!state.consentAccepted) }
+                    .padding(vertical = 2.dp),
+            ) {
                 Checkbox(checked = state.consentAccepted, onCheckedChange = onConsentChange)
                 Text(
                     "I own this content or have permission to download it.",
@@ -305,7 +329,7 @@ private fun SearchResultsCard(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    IconButton(onClick = { onDownload(item) }) {
+                    AtlasIconButton(text = "Download", onClick = { onDownload(item) }) {
                         Icon(Icons.Filled.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
@@ -321,6 +345,7 @@ private fun SearchResultsCard(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PreviewCard(
     preview: com.atlas.music.downloads.YoutubePreview,
@@ -406,9 +431,12 @@ private fun PreviewCard(
             }
             Text("Audio format", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FormatChip("opus", "Opus · best quality (WebM)", state.format, onSetFormat)
-                FormatChip("m4a", "M4A · AAC (iTunes-compatible)", state.format, onSetFormat)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                FormatChip("opus", "Opus (WebM)", state.format, onSetFormat)
+                FormatChip("m4a", "M4A (AAC)", state.format, onSetFormat)
                 FormatChip("best", "Original", state.format, onSetFormat)
             }
             Spacer(Modifier.height(4.dp))
@@ -450,7 +478,14 @@ private fun PreviewCard(
                     Text("Not licensed for download")
                 }
             } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { onConsentChange(!state.consentAccepted) }
+                        .padding(vertical = 2.dp),
+                ) {
                     Checkbox(checked = state.consentAccepted, onCheckedChange = onConsentChange)
                     Text(
                         "I own this content or have permission to download it.",
@@ -498,7 +533,14 @@ private fun DownloadTaskRow(
     onRetry: (Long) -> Unit,
     onDelete: (Long) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    var errorExpanded by remember(task.id, task.error) { mutableStateOf(false) }
+    val hasErrorDetail = task.status == DownloadStatus.FAILED && !task.error.isNullOrBlank()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (hasErrorDetail) Modifier.clickable { errorExpanded = !errorExpanded } else Modifier)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusIcon(task.status)
             Spacer(Modifier.width(12.dp))
@@ -515,7 +557,8 @@ private fun DownloadTaskRow(
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = if (task.status == DownloadStatus.FAILED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
+                    maxLines = if (errorExpanded) Int.MAX_VALUE else 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             when (task.status) {
@@ -556,6 +599,7 @@ private fun StatusIcon(status: DownloadStatus) {
     Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun YtdlpCard(
     state: DownloadsUiState,
@@ -589,18 +633,21 @@ private fun YtdlpCard(
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
             }
             Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
                 OutlinedButton(onClick = onCheckUpdate, enabled = !state.checkingUpdate) {
                     if (state.checkingUpdate) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                     else Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Check for updates")
+                    Text("Check", maxLines = 1)
                 }
                 Button(onClick = onApplyUpdate, enabled = !state.updating) {
                     if (state.updating) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
                     else Icon(Icons.Filled.Update, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(if (state.updating) "Updating…" else "Update now")
+                    Text(if (state.updating) "Updating…" else "Update", maxLines = 1)
                 }
             }
             TextButton(onClick = onRestoreBundled) { Text("Restore bundled yt-dlp") }

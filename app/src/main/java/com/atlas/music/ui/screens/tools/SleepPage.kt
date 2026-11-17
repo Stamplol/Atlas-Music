@@ -2,6 +2,8 @@ package com.atlas.music.ui.screens.tools
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.atlas.music.ui.viewmodel.ToolsUiState
 import com.atlas.music.ui.viewmodel.ToolsViewModel
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SleepPage(
     state: ToolsUiState,
@@ -66,7 +69,7 @@ fun SleepPage(
                 Spacer(Modifier.height(14.dp))
                 StudioHeader("DURATION")
                 Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     listOf(10, 20, 30, 60, 90).forEach { m ->
                         FilterChip(selected = false, onClick = { viewModel.startSleepTimer(m) }, label = { Text("${m}m") })
                     }
@@ -99,7 +102,7 @@ fun SleepPage(
                 StudioHeader("DEFAULT")
                 Text("The sleep button in Now Playing uses this duration.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     listOf(10, 15, 30, 45, 60).forEach { m ->
                         FilterChip(selected = state.settings.sleepTimerDefaultMinutes == m, onClick = { viewModel.setSleepTimerDefault(m) }, label = { Text("${m}m") })
                     }

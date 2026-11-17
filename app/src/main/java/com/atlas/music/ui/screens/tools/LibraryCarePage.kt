@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import com.atlas.music.ui.viewmodel.ToolsUiState
 import com.atlas.music.ui.viewmodel.ToolsViewModel
 import com.atlas.music.util.Format
+import com.atlas.music.util.MediaFormatHelper
 import com.atlas.music.util.SortOption
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -57,9 +58,12 @@ fun LibraryCarePage(
 ) {
     var showFix by remember { androidx.compose.runtime.mutableStateOf(false) }
     val allTracks by com.atlas.music.di.ServiceLocator.musicRepository.observeAll(SortOption.TITLE).collectAsState(initial = emptyList())
-    val sizeGb = state.totalSizeBytes / 1e9
     val formats = remember(allTracks) {
-        allTracks.groupingBy { it.uri.substringAfterLast('.', "unk").lowercase().take(4) }.eachCount().toList().sortedByDescending { it.second }
+        allTracks
+            .groupingBy { MediaFormatHelper.displayAudioFormatLabel(it.mimeType, it.displayName) }
+            .eachCount()
+            .toList()
+            .sortedByDescending { it.second }
     }
     Column(
         modifier = modifier
@@ -73,17 +77,17 @@ fun LibraryCarePage(
                 StudioHeader("LIBRARY CARE", trailing = "everything visible")
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "${state.trackCount} tracks · ${Format.totalDuration(state.totalDurationMs)} · ${"%.1f".format(sizeGb)} GB",
+                    "${state.trackCount} ${if (state.trackCount == 1) "track" else "tracks"} · ${Format.totalDuration(state.totalDurationMs)} · ${Format.bytes(state.totalSizeBytes)}",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                 )
                 if (formats.isNotEmpty()) {
                     Spacer(Modifier.height(10.dp))
-                    StudioHeader("FORMATS", trailing = "${formats.size} types")
+                    StudioHeader("FORMATS", trailing = if (formats.size == 1) "1 type" else "${formats.size} types")
                     Spacer(Modifier.height(6.dp))
-                    formats.forEach { (ext, count) ->
+                    formats.forEach { (fmt, count) ->
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
-                            Text(".$ext", style = MaterialTheme.typography.labelMedium, modifier = Modifier.width(52.dp), color = MaterialTheme.colorScheme.onSurface)
+                            Text(fmt, style = MaterialTheme.typography.labelMedium, modifier = Modifier.width(58.dp), color = MaterialTheme.colorScheme.onSurface)
                             Text("×$count", style = MaterialTheme.typography.labelMedium, modifier = Modifier.width(48.dp))
                             androidx.compose.foundation.layout.Box(modifier = Modifier.weight(1f).height(6.dp).clip(androidx.compose.foundation.shape.CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
                                 androidx.compose.foundation.layout.Box(
@@ -102,15 +106,15 @@ fun LibraryCarePage(
         Spacer(Modifier.height(12.dp))
         Card(shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(18.dp)) {
-                StudioHeader("TAGS", trailing = if (state.unknownArtistCount > 0) "${state.unknownArtistCount} unknowns" else "all good")
+                StudioHeader("MISSING INFO", trailing = if (state.unknownArtistCount > 0) "${state.unknownArtistCount} missing" else "all good")
                 Spacer(Modifier.height(8.dp))
                 if (state.unknownArtistCount > 0) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("${state.unknownArtistCount}", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("tracks need artist or album", style = MaterialTheme.typography.titleSmall)
-                            Text("One tap fixes every one of them as user-edited tags.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("songs missing artist or album", style = MaterialTheme.typography.titleSmall)
+                            Text("Fill in missing tags across these songs in one step.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Button(onClick = { showFix = true }, shape = RoundedCornerShape(12.dp)) { Text("Fix") }
                     }
@@ -124,18 +128,23 @@ fun LibraryCarePage(
             }
         }
         Spacer(Modifier.height(12.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickableRow(onOpenDuplicates)
-                .padding(horizontal = 6.dp),
+        Card(
+            shape = RoundedCornerShape(26.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).clickable(onClick = onOpenDuplicates),
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Find duplicates", style = MaterialTheme.typography.titleLarge)
-                Text("Same song saved twice — flagged by fingerprint of title/artist/duration", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(18.dp),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    StudioHeader("DUPLICATES")
+                    Spacer(Modifier.height(4.dp))
+                    Text("Find duplicates", style = MaterialTheme.typography.titleMedium)
+                    Text("Same song saved twice — flagged by title, artist, and duration", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Icon(Icons.Filled.ChevronRight, contentDescription = "Open duplicates", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Icon(Icons.Filled.ChevronRight, contentDescription = "Open duplicates", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.height(24.dp))
     }

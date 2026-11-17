@@ -24,17 +24,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Headphones
-import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -185,6 +187,11 @@ fun NowPlayingScreen(
         }
     }
 
+    val onBg = MaterialTheme.colorScheme.onBackground
+    val onBgMuted = MaterialTheme.colorScheme.onSurfaceVariant
+    val chipBg = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+    val orbitColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+
     Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         // Background engine (bg.js port): animated dunes flowing behind everything.
         // The blur stays as a quiet veil so the art still feels lit by itself.
@@ -208,14 +215,14 @@ fun NowPlayingScreen(
                 .fillMaxSize()
                 .blur(90.dp),
             contentScale = ContentScale.Crop,
-            alpha = 0.38f,
+            alpha = 0.34f,
         )
         Box(
             modifier = Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        Color(0x330B0D12),
-                        MaterialTheme.colorScheme.background.copy(alpha = 0.62f),
+                        MaterialTheme.colorScheme.background.copy(alpha = 0.25f),
+                        MaterialTheme.colorScheme.background.copy(alpha = 0.68f),
                         MaterialTheme.colorScheme.background,
                     ),
                 ),
@@ -228,9 +235,10 @@ fun NowPlayingScreen(
                 if (showLyrics) {
                     Box(modifier = Modifier.weight(1f).fillMaxHeight().padding(horizontal = 8.dp, vertical = 4.dp)) {
                         com.atlas.music.ui.components.LyricsPanel(
-                            track = track ?: return@Box,
+                            track = track,
                             positionMs = state.positionMs,
                             onClose = { showLyrics = false },
+                            onSeekTo = onSeekTo,
                         )
                     }
                 } else if (showToolsPanel) {
@@ -252,7 +260,7 @@ fun NowPlayingScreen(
                 } else Box(modifier = Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
                     androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         val artSize = minOf(maxWidth, maxHeight) * 0.82f
-                        MeridianArcLandscape(fraction = fraction, accent = MaterialTheme.colorScheme.primary, orbit = Color.White.copy(alpha = 0.10f), modifier = Modifier.fillMaxSize())
+                        MeridianArcLandscape(fraction = fraction, accent = MaterialTheme.colorScheme.primary, orbit = orbitColor, modifier = Modifier.fillMaxSize())
                         Box(
                             modifier = Modifier
                                 .size(artSize)
@@ -289,18 +297,18 @@ fun NowPlayingScreen(
                 }
                 // RIGHT: controls stack (vertically centered, thumb-reachable)
                 Column(modifier = Modifier.weight(1f).fillMaxHeight().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.Center) {
-                    Row(modifier = Modifier.statusBarsPadding(), verticalAlignment = Alignment.CenterVertically) {
-                        AtlasIconButton(text = "Back", onClick = onClose) {
-                            Icon(Icons.Filled.Close, contentDescription = "Close now playing", tint = Color.White)
+                    Box(modifier = Modifier.fillMaxWidth().statusBarsPadding()) {
+                        AtlasIconButton(text = "Back", onClick = onClose, modifier = Modifier.align(Alignment.CenterStart)) {
+                            Icon(Icons.Filled.Close, contentDescription = "Close now playing", tint = onBg)
                         }
-                        Spacer(Modifier.weight(1f))
-                        Text("NOW PLAYING", style = MaterialTheme.typography.titleSmall, color = Color.White.copy(alpha = 0.65f))
-                        Spacer(Modifier.weight(1f))
-                        AtlasIconButton(text = "Lyrics", onClick = { showLyrics = !showLyrics }) {
-                            Icon(Icons.Filled.Lyrics, contentDescription = "Lyrics", tint = if (showLyrics) MaterialTheme.colorScheme.primary else Color.White)
-                        }
-                        AtlasIconButton(text = "Track information", onClick = onOpenInfo) {
-                            Icon(Icons.Filled.GraphicEq, contentDescription = "Track information", tint = Color.White)
+                        Text("NOW PLAYING", style = MaterialTheme.typography.titleSmall, color = onBgMuted, modifier = Modifier.align(Alignment.Center))
+                        Row(modifier = Modifier.align(Alignment.CenterEnd)) {
+                            AtlasIconButton(text = "Lyrics", onClick = { showLyrics = !showLyrics }) {
+                                Icon(Icons.Filled.Lyrics, contentDescription = "Lyrics", tint = if (showLyrics) MaterialTheme.colorScheme.primary else onBg)
+                            }
+                            AtlasIconButton(text = "Track information", onClick = onOpenInfo) {
+                                Icon(Icons.Outlined.Info, contentDescription = "Track information", tint = onBg)
+                            }
                         }
                     }
                     val albumEyebrow = state.album.takeIf { it.isNotBlank() && it != "Unknown album" }
@@ -310,7 +318,7 @@ fun NowPlayingScreen(
                     Text(
                         state.title.ifBlank { "Unknown title" },
                         style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
+                        color = onBg,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -322,7 +330,7 @@ fun NowPlayingScreen(
                             track?.year?.takeIf { it > 0 }?.toString(),
                         ).joinToString("   ·   "),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.72f),
+                        color = onBgMuted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -336,13 +344,13 @@ fun NowPlayingScreen(
                         colors = androidx.compose.material3.SliderDefaults.colors(
                             thumbColor = MaterialTheme.colorScheme.primary,
                             activeTrackColor = MaterialTheme.colorScheme.primary,
-                            inactiveTrackColor = Color.White.copy(alpha = 0.32f),
+                            inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.24f),
                         ),
                     )
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        Text(Format.duration(effectivePosition), style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.7f), fontFamily = com.atlas.music.ui.theme.JetBrainsMono)
+                        Text(Format.duration(effectivePosition), style = MaterialTheme.typography.bodyMedium, color = onBgMuted, fontFamily = com.atlas.music.ui.theme.JetBrainsMono)
                         Spacer(Modifier.weight(1f))
-                        Text(Format.duration(state.durationMs), style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.7f), fontFamily = com.atlas.music.ui.theme.JetBrainsMono)
+                        Text(Format.duration(state.durationMs), style = MaterialTheme.typography.bodyMedium, color = onBgMuted, fontFamily = com.atlas.music.ui.theme.JetBrainsMono)
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(
@@ -351,10 +359,10 @@ fun NowPlayingScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly,
                     ) {
                         AtlasIconButton(text = "Shuffle", onClick = onToggleShuffle) {
-                            Icon(Icons.Filled.Shuffle, contentDescription = "Toggle shuffle", tint = if (state.shuffleEnabled) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.65f))
+                            Icon(Icons.Filled.Shuffle, contentDescription = "Toggle shuffle", tint = if (state.shuffleEnabled) MaterialTheme.colorScheme.primary else onBgMuted)
                         }
                         AtlasIconButton(text = "Previous track", onClick = onSkipPrevious, modifier = Modifier.size(56.dp)) {
-                            Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous track", tint = Color.White, modifier = Modifier.size(32.dp))
+                            Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous track", tint = onBg, modifier = Modifier.size(32.dp))
                         }
                         Box(
                             modifier = Modifier.size(72.dp).shadow(elevation = 16.dp, shape = CircleShape, spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)).clip(CircleShape).background(MaterialTheme.colorScheme.primary).clickable(onClick = onTogglePlayPause),
@@ -368,13 +376,13 @@ fun NowPlayingScreen(
                             )
                         }
                         AtlasIconButton(text = "Next track", onClick = onSkipNext, modifier = Modifier.size(56.dp)) {
-                            Icon(Icons.Filled.SkipNext, contentDescription = "Next track", tint = Color.White, modifier = Modifier.size(32.dp))
+                            Icon(Icons.Filled.SkipNext, contentDescription = "Next track", tint = onBg, modifier = Modifier.size(32.dp))
                         }
                         AtlasIconButton(text = "Cycle repeat mode", onClick = onCycleRepeatMode) {
                             when (state.repeatMode) {
                                 Player.REPEAT_MODE_ONE -> Icon(Icons.Filled.RepeatOne, contentDescription = "Repeat one track", tint = MaterialTheme.colorScheme.primary)
                                 Player.REPEAT_MODE_ALL -> Icon(Icons.Filled.Repeat, contentDescription = "Repeat queue", tint = MaterialTheme.colorScheme.primary)
-                                else -> Icon(Icons.Filled.Repeat, contentDescription = "Repeat off", tint = Color.White.copy(alpha = 0.65f))
+                                else -> Icon(Icons.Filled.Repeat, contentDescription = "Repeat off", tint = onBgMuted)
                             }
                         }
                     }
@@ -387,12 +395,12 @@ fun NowPlayingScreen(
                             Icon(
                                 imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                                 contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
-                                tint = if (isFavorite) MaterialTheme.colorScheme.primary else Color.White,
+                                tint = if (isFavorite) MaterialTheme.colorScheme.primary else onBg,
                             )
                         }
                         SleepTimerControl(endAt = sleepTimerEndAt, defaultMinutes = 30, onStart = onStartSleepTimer, onClear = onClearSleepTimer)
                         AtlasIconButton(text = "Open queue", onClick = onOpenQueue) {
-                            Icon(Icons.Filled.QueueMusic, contentDescription = "Open queue", tint = Color.White)
+                            Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Open queue", tint = onBg)
                         }
                     }
                     // Output row compact for landscape
@@ -405,9 +413,9 @@ fun NowPlayingScreen(
                         )
                         Spacer(Modifier.width(4.dp))
                         Box(
-                            modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Color.White.copy(alpha = 0.08f)).clickable { showOutputPicker = true }.padding(horizontal = 12.dp, vertical = 8.dp),
+                            modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(chipBg).clickable { showOutputPicker = true }.padding(horizontal = 12.dp, vertical = 8.dp),
                         ) {
-                            Text(outputLabel, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.9f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(outputLabel, style = MaterialTheme.typography.bodyMedium, color = onBg, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         if (state.playbackSpeed != 1f) {
                             Spacer(Modifier.width(8.dp))
@@ -417,27 +425,28 @@ fun NowPlayingScreen(
                 }
             }
             // Floating SVG tools toggle — bottom right (landscape only), plain icon
-            Box(modifier = Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 20.dp)) {
+            Box(modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 20.dp, bottom = 20.dp)) {
                 AtlasIconButton(text = "Toggle tools", onClick = { showToolsPanel = !showToolsPanel }) {
                     Icon(
                         imageVector = ImageVector.vectorResource(R.drawable.ic_tools_toggle),
                         contentDescription = "Toggle tools",
-                        tint = if (showToolsPanel || hasActiveTool) MaterialTheme.colorScheme.primary else Color.White,
+                        tint = if (showToolsPanel || hasActiveTool) MaterialTheme.colorScheme.primary else onBg,
                         modifier = Modifier.size(20.dp),
                     )
                 }
                 if (hasActiveTool && !showToolsPanel) {
                     androidx.compose.foundation.layout.Box(
-                        modifier = Modifier.size(7.dp).clip(androidx.compose.foundation.shape.CircleShape).background(MaterialTheme.colorScheme.primary).align(Alignment.TopEnd).padding(top = 10.dp, end = 10.dp),
+                        modifier = Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 8.dp).size(7.dp).clip(androidx.compose.foundation.shape.CircleShape).background(MaterialTheme.colorScheme.primary),
                     ) {}
                 }
             }
         } else if (showLyrics) {
             Box(modifier = Modifier.fillMaxSize().padding(top = 12.dp)) {
                 com.atlas.music.ui.components.LyricsPanel(
-                    track = track ?: return@Box,
+                    track = track,
                     positionMs = state.positionMs,
                     onClose = { showLyrics = false },
+                    onSeekTo = onSeekTo,
                 )
             }
         } else LazyColumn(
@@ -445,22 +454,23 @@ fun NowPlayingScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 10.dp),
         ) {
             item {
-                Row(modifier = Modifier.statusBarsPadding(), verticalAlignment = Alignment.CenterVertically) {
-                    AtlasIconButton(text = "Back", onClick = onClose) {
-                        Icon(Icons.Filled.Close, contentDescription = "Close now playing", tint = Color.White)
+                Box(modifier = Modifier.fillMaxWidth().statusBarsPadding()) {
+                    AtlasIconButton(text = "Back", onClick = onClose, modifier = Modifier.align(Alignment.CenterStart)) {
+                        Icon(Icons.Filled.Close, contentDescription = "Close now playing", tint = onBg)
                     }
-                    Spacer(Modifier.weight(1f))
                     Text(
                         "NOW PLAYING",
                         style = MaterialTheme.typography.titleSmall,
-                        color = Color.White.copy(alpha = 0.65f),
+                        color = onBgMuted,
+                        modifier = Modifier.align(Alignment.Center),
                     )
-                    Spacer(Modifier.weight(1f))
-                    AtlasIconButton(text = "Lyrics", onClick = { showLyrics = !showLyrics }) {
-                        Icon(Icons.Filled.Lyrics, contentDescription = "Lyrics", tint = if (showLyrics) MaterialTheme.colorScheme.primary else Color.White)
-                    }
-                    AtlasIconButton(text = "Track information", onClick = onOpenInfo) {
-                        Icon(Icons.Filled.GraphicEq, contentDescription = "Track information", tint = Color.White)
+                    Row(modifier = Modifier.align(Alignment.CenterEnd)) {
+                        AtlasIconButton(text = "Lyrics", onClick = { showLyrics = !showLyrics }) {
+                            Icon(Icons.Filled.Lyrics, contentDescription = "Lyrics", tint = if (showLyrics) MaterialTheme.colorScheme.primary else onBg)
+                        }
+                        AtlasIconButton(text = "Track information", onClick = onOpenInfo) {
+                            Icon(Icons.Outlined.Info, contentDescription = "Track information", tint = onBg)
+                        }
                     }
                 }
             }
@@ -476,7 +486,7 @@ fun NowPlayingScreen(
                         fraction = fraction,
                         modifier = Modifier.fillMaxSize(),
                         accent = MaterialTheme.colorScheme.primary,
-                        orbit = Color.White.copy(alpha = 0.10f),
+                        orbit = orbitColor,
                     )
                     Box(
                         modifier = Modifier
@@ -528,7 +538,7 @@ fun NowPlayingScreen(
                 Text(
                     state.title.ifBlank { "Unknown title" },
                     style = MaterialTheme.typography.displaySmall,
-                    color = Color.White,
+                    color = onBg,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -540,7 +550,7 @@ fun NowPlayingScreen(
                         track?.year?.takeIf { it > 0 }?.toString(),
                     ).joinToString("   ·   "),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.72f),
+                    color = onBgMuted,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -560,21 +570,21 @@ fun NowPlayingScreen(
                     colors = androidx.compose.material3.SliderDefaults.colors(
                         thumbColor = MaterialTheme.colorScheme.primary,
                         activeTrackColor = MaterialTheme.colorScheme.primary,
-                        inactiveTrackColor = Color.White.copy(alpha = 0.32f),
+                        inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.24f),
                     ),
                 )
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         Format.duration(effectivePosition),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = onBgMuted,
                         fontFamily = com.atlas.music.ui.theme.JetBrainsMono,
                     )
                     Spacer(Modifier.weight(1f))
                     Text(
                         Format.duration(state.durationMs),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = onBgMuted,
                         fontFamily = com.atlas.music.ui.theme.JetBrainsMono,
                     )
                 }
@@ -590,11 +600,11 @@ fun NowPlayingScreen(
                         Icon(
                             Icons.Filled.Shuffle,
                             contentDescription = "Toggle shuffle",
-                            tint = if (state.shuffleEnabled) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.65f),
+                            tint = if (state.shuffleEnabled) MaterialTheme.colorScheme.primary else onBgMuted,
                         )
                     }
                     AtlasIconButton(text = "Previous track", onClick = onSkipPrevious, modifier = Modifier.size(56.dp)) {
-                        Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous track", tint = Color.White, modifier = Modifier.size(32.dp))
+                        Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous track", tint = onBg, modifier = Modifier.size(32.dp))
                     }
                     Box(
                         modifier = Modifier
@@ -613,7 +623,7 @@ fun NowPlayingScreen(
                         )
                     }
                     AtlasIconButton(text = "Next track", onClick = onSkipNext, modifier = Modifier.size(56.dp)) {
-                        Icon(Icons.Filled.SkipNext, contentDescription = "Next track", tint = Color.White, modifier = Modifier.size(32.dp))
+                        Icon(Icons.Filled.SkipNext, contentDescription = "Next track", tint = onBg, modifier = Modifier.size(32.dp))
                     }
                     AtlasIconButton(text = "Cycle repeat mode", onClick = onCycleRepeatMode) {
                         when (state.repeatMode) {
@@ -622,7 +632,7 @@ fun NowPlayingScreen(
                             Player.REPEAT_MODE_ALL ->
                                 Icon(Icons.Filled.Repeat, contentDescription = "Repeat queue", tint = MaterialTheme.colorScheme.primary)
                             else ->
-                                Icon(Icons.Filled.Repeat, contentDescription = "Repeat off", tint = Color.White.copy(alpha = 0.65f))
+                                Icon(Icons.Filled.Repeat, contentDescription = "Repeat off", tint = onBgMuted)
                         }
                     }
                 }
@@ -638,7 +648,7 @@ fun NowPlayingScreen(
                         Icon(
                             imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                             contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
-                            tint = if (isFavorite) MaterialTheme.colorScheme.primary else Color.White,
+                            tint = if (isFavorite) MaterialTheme.colorScheme.primary else onBg,
                         )
                     }
                     SleepTimerControl(
@@ -648,7 +658,7 @@ fun NowPlayingScreen(
                         onClear = onClearSleepTimer,
                     )
                     AtlasIconButton(text = "Open queue", onClick = onOpenQueue) {
-                        Icon(Icons.Filled.QueueMusic, contentDescription = "Open queue", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Open queue", tint = onBg)
                     }
                 }
             }
@@ -672,14 +682,14 @@ fun NowPlayingScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
-                            .background(Color.White.copy(alpha = 0.08f))
+                            .background(chipBg)
                             .clickable { showOutputPicker = true }
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                     ) {
                         Text(
                             outputLabel,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.9f),
+                            color = onBg,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -692,14 +702,14 @@ fun NowPlayingScreen(
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(Color.White.copy(alpha = 0.1f))
+                                .background(chipBg)
                                 .clickable { onSetSpeed(1f) }
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                         )
                     }
                 }
             }
-            item { Spacer(Modifier.height(48.dp)) }
+            item { Spacer(Modifier.navigationBarsPadding().height(28.dp)) }
         }
 
         if (showOutputPicker) {
@@ -850,11 +860,12 @@ internal fun OutputPickerSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
             )
+            val rowBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
-                    .background(Color.White.copy(alpha = 0.04f))
+                    .background(if (preferredDeviceId == null) MaterialTheme.colorScheme.secondaryContainer else rowBg)
                     .clickable { onSelect(null) }
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -872,7 +883,7 @@ internal fun OutputPickerSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(14.dp))
-                        .background(if (preferredDeviceId == output.id) MaterialTheme.colorScheme.secondaryContainer else Color.White.copy(alpha = 0.04f))
+                        .background(if (preferredDeviceId == output.id) MaterialTheme.colorScheme.secondaryContainer else rowBg)
                         .clickable { onSelect(output) }
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -912,17 +923,17 @@ private fun SleepTimerControl(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f))
                 .clickable(onClick = onClear)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             Icon(Icons.Filled.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
-            Text("$minutes min — tap to cancel", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Text("$minutes min — tap to cancel", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, maxLines = 1)
         }
     } else {
         AtlasIconButton(text = "Start sleep timer", onClick = { onStart(defaultMinutes) }) {
-            Icon(Icons.Filled.Timer, contentDescription = "Start sleep timer ($defaultMinutes min)", tint = Color.White)
+            Icon(Icons.Filled.Timer, contentDescription = "Start sleep timer ($defaultMinutes min)", tint = MaterialTheme.colorScheme.onBackground)
         }
     }
 }
@@ -943,17 +954,19 @@ private fun ToolsActivePanel(
     onShowOutputPicker: () -> Unit,
     onClosePanel: () -> Unit,
 ) {
+    val onBg = MaterialTheme.colorScheme.onBackground
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
     androidx.compose.foundation.layout.Column(modifier = Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp)) {
         androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             Text("TOOLS", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
             TextButton(onClick = onClosePanel) { Text("Cover") }
         }
         Spacer(Modifier.height(8.dp))
-        Text("Focus — ${toolsState.pomodoroMode}", style = MaterialTheme.typography.titleMedium)
+        Text("Focus — ${toolsState.pomodoroMode}", style = MaterialTheme.typography.titleMedium, color = onBg)
         Text(
             formatMs(toolsState.remainingMs.takeIf { it > 0 } ?: (if (toolsState.pomodoroMode == "BREAK") toolsState.settings.pomodoroBreakMinutes * 60_000L else toolsState.settings.pomodoroFocusMinutes * 60_000L)),
             style = MaterialTheme.typography.displaySmall,
-            color = Color.White,
+            color = onBg,
             fontWeight = FontWeight.Bold,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -966,19 +979,22 @@ private fun ToolsActivePanel(
             }
             TextButton(onClick = onResetPomodoro) { Text("Reset") }
         }
-        Text("Today ${toolsState.focusMinutesToday}m · ${toolsState.sessionsToday} done", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.65f))
-        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = Color.White.copy(alpha = 0.1f))
-        Text("Sleep", style = MaterialTheme.typography.titleMedium)
+        Text("Today ${toolsState.focusMinutesToday}m · ${toolsState.sessionsToday} done", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = dividerColor)
+        Text("Sleep", style = MaterialTheme.typography.titleMedium, color = onBg)
         val sleepRem = sleepEndAt?.let { (it - System.currentTimeMillis()).coerceAtLeast(0L) }
         Text(if (sleepRem != null && sleepRem > 0) "Paused in ${formatMs(sleepRem)}" else "No timer", color = MaterialTheme.colorScheme.primary)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf(10, 30, 60).forEach { m -> androidx.compose.material3.FilterChip(selected = false, onClick = { onStartSleep(m) }, label = { Text("$m") }) }
+            listOf(10, 30, 60).forEach { m -> androidx.compose.material3.FilterChip(selected = false, onClick = { onStartSleep(m) }, label = { Text("${m}m") }) }
             if (sleepRem != null && sleepRem > 0) TextButton(onClick = onClearSleep) { Text("Cancel") }
         }
-        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = Color.White.copy(alpha = 0.1f))
-        Text("Sound", style = MaterialTheme.typography.titleMedium)
+        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = dividerColor)
+        Text("Sound", style = MaterialTheme.typography.titleMedium, color = onBg)
+        val activeEqPreset = com.atlas.music.util.EqCurves.matchingPresetName(toolsState.equalizerBands)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf("Flat", "Bass", "Vocal", "Night").forEach { preset -> androidx.compose.material3.FilterChip(selected = false, onClick = { onApplyEq(preset) }, label = { Text(preset) }) }
+            listOf("Flat", "Bass", "Vocal", "Night").forEach { preset ->
+                androidx.compose.material3.FilterChip(selected = activeEqPreset == preset, onClick = { onApplyEq(preset) }, label = { Text(preset) })
+            }
         }
         TextButton(onClick = onShowOutputPicker) { Text("Audio output") }
         if (toolsState.lastEvent != null) Text(toolsState.lastEvent!!, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
