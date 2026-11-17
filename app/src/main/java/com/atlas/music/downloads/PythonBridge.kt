@@ -106,6 +106,9 @@ class PythonBridge(private val appContext: Context) {
     fun writeTags(path: String, title: String, artist: String, album: String, genre: String, year: Int, track: Int, disc: Int): JSONObject =
         call("write_tags", path, title, artist, album, genre, year, track, disc)
 
+    /** Download and embed cover art via mutagen. Best-effort — never throws. */
+    fun embedCover(path: String, coverUrl: String): JSONObject = call("embed_cover", path, coverUrl)
+
     fun readEmbeddedLyrics(path: String): JSONObject = call("read_lyrics", path)
 }
 

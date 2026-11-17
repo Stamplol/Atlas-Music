@@ -423,10 +423,33 @@ class DownloadManager(
             return
         }
 
-        // 3) Move the finished file into the library destination.
+        // 3) Embed real metadata + artwork, then move into the library.
         val tempPath = downloadResult.optString("path")
-        val metaTitle = downloadResult.optJSONObject("meta")?.optString("title")?.takeIf { it.isNotBlank() } ?: initial.title
-        val finalPath = moveIntoLibrary(taskDir, tempPath, initial, metaTitle)
+        val meta = downloadResult.optJSONObject("meta")
+        val downloadTitle = meta?.optString("title")?.takeIf { it.isNotBlank() } ?: initial.title
+        // Artist/uploader from the download metadata, else from the task — never "Unknown".
+        val downloadArtist = meta?.optString("uploader")?.takeIf { it.isNotBlank() } ?: initial.uploader
+        val downloadGenres = meta?.optJSONArray("genres")
+        val downloadGenre = downloadGenres?.optString(0)?.takeIf { it.isNotBlank() } ?: ""
+        // Cover art: preview thumbnail URL (passed through the task), else what yt-dlp fetched.
+        val coverUrl = meta?.optString("thumbnail")?.takeIf { it.isNotBlank() }
+            ?: initial.thumbnailUrl.takeIf { it.isNotBlank() }
+            ?: meta?.optJSONArray("thumbnails")?.optJSONObject(meta.optJSONArray("thumbnails").length() - 1)?.optString("url")
+        // Year from upload_date (yyyyMMdd) when present.
+        val uploadDate = meta?.optString("upload_date")?.takeIf { it.length >= 4 }
+        val downloadYear = uploadDate?.take(4)?.toIntOrNull() ?: 0
+        // Write tags first, then embed artwork. Both are best-effort and log their own outcome.
+        val tagResult = runCatching { pythonBridge.writeTags(tempPath, downloadTitle, downloadArtist, "", downloadGenre, downloadYear, 0, 0) }
+        tagResult.onSuccess { r -> android.util.Log.i("AtlasTags", "write_tags -> ok=${r.optBoolean("ok")} err=${r.optString("error")} artist=$downloadArtist genre=$downloadGenre year=$downloadYear") }
+            .onFailure { e -> android.util.Log.w("AtlasTags", "write_tags threw: ${e.message}") }
+        if (!coverUrl.isNullOrBlank()) {
+            val coverResult = runCatching { pythonBridge.embedCover(tempPath, coverUrl) }
+            coverResult.onSuccess { r -> android.util.Log.i("AtlasTags", "embed_cover -> ok=${r.optBoolean("ok")} err=${r.optString("error")}") }
+                .onFailure { e -> android.util.Log.w("AtlasTags", "embed_cover threw: ${e.message}") }
+        } else {
+            android.util.Log.i("AtlasTags", "no cover url to embed (downloadTitle=$downloadTitle, initial thumb=${initial.thumbnailUrl.take(60)}, meta thumb=${meta?.optString("thumbnail")?.take(60)})")
+        }
+        val finalPath = moveIntoLibrary(taskDir, tempPath, initial, downloadTitle)
         if (finalPath == null) {
             failTask(taskId, "Couldn't save the downloaded file into your music folder.", onProgress)
             taskDir.deleteRecursively()

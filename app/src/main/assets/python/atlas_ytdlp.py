@@ -11,6 +11,32 @@ import os
 import sys
 import traceback
 
+
+def _sync_id3_size(blob, offset):
+    """Compute ID3v2 declared size (synchsafe) at offset, return (data_size, total_size)."""
+    def _s(b):
+        return (b[0] & 0x7f) << 21 | (b[1] & 0x7f) << 14 | (b[2] & 0x7f) << 7 | (b[3] & 0x7f)
+    hdr_size = 10  # ID3v2 simple header
+    if blob[offset:offset + 3] != b"ID3":
+        return None
+    size = _s(blob[offset + 6:offset + 10])
+    total = hdr_size + size
+    # unsynchronisation/extended header adds bytes — approximate via the
+    # actual structure; for ffmpeg-wrapped files this fits tightly.
+    return size, total
+
+
+def _strip_id3_preamble(blob):
+    """If blob looks like an MP4 with an ID3v2 preamble (ffmpeg-style), drop the preamble."""
+    if not blob or len(blob) < 16 or blob[:3] != b"ID3":
+        return None
+    # With an FFmpeg-wrapped ffmpeg MP4, ftyp starts after the ID3 block; scan forward.
+    idx = blob.find(b"ftyp")
+    if idx == -1 or idx < 20:
+        return None
+    # Keep the 4-byte atom length prefix immediately before 'ftyp' (normally '00 00 00 1C').
+    return blob[idx - 4:]
+
 _bundled_version = None
 _update_dir = None
 
@@ -83,6 +109,8 @@ def _serialize(info, requested_format):
         # SoundCloud exposes the artist's reuse grant here; YouTube reports all-rights-reserved.
         # Atlas only downloads tracks licensed for redistribution (CC) or artist-enabled.
         "license": info.get("license"),
+        "genres": info.get("genres"),
+        "upload_date": (info.get("upload_date") or "")[:8] or None,
         "formats": formats[:40],
     }
 
@@ -347,6 +375,125 @@ def sha256_file(path):
         return json.dumps({"ok": False, "error": str(exc)[:200]})
 
 
+
+
+def embed_cover(path, cover_url):
+    """Download the supplied cover URL and embed it into the file via mutagen.
+
+    Supports ID3v2 (MP3/AAC), FLAC pictures, Vorbis metadata_block_picture,
+    and MP4/M4A covr atoms. Returns JSON {ok, error?}.
+    """
+    try:
+        from mutagen import File as MutagenFile
+        from mutagen.id3 import ID3, APIC
+        from mutagen.mp4 import MP4, MP4Cover
+        from mutagen.flac import FLAC, Picture
+        from mutagen.oggvorbis import OggVorbis
+        from mutagen.apev2 import APEv2File
+        import urllib.request
+    except Exception as exc:
+        return json.dumps({"ok": False, "error": f"mutagen unavailable: {exc}"})
+
+    if not path or not os.path.isfile(path):
+        return json.dumps({"ok": False, "error": "file not found"})
+    if not cover_url:
+        return json.dumps({"ok": False, "error": "no cover url"})
+
+    try:
+        req = urllib.request.Request(cover_url, headers={"User-Agent": "AtlasMusic/1.0 (Android)"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            image_bytes = resp.read()
+        mime = resp.headers.get_content_type() if hasattr(resp.headers, 'get_content_type') else (resp.headers.get("Content-Type", "image/jpeg")).split(";")[0].strip().lower()
+        if mime not in ("image/jpeg", "image/png", "image/webp"):
+            mime = "image/jpeg"
+    except Exception as exc:
+        return json.dumps({"ok": False, "error": f"cover download failed: {exc}"})
+
+    if len(image_bytes) < 1024:
+        return json.dumps({"ok": False, "error": "cover too small / failed to fetch"})
+
+    try:
+        ext = os.path.splitext(path.lower())[1]
+        if ext in (".mp3", ".aac"):
+            # ID3 branch for MP3/AAC only — never for MP4/M4A.
+            try:
+                tags = ID3(path)
+            except Exception:
+                tags = ID3()
+            tags.delall("APIC")
+            tags.add(APIC(encoding=3, mime=mime, type=3, desc="Cover", data=image_bytes))
+            tags.save(path, v2_version=3)
+            return json.dumps({"ok": True})
+        audio = MutagenFile(path)
+        if audio is None:
+            return json.dumps({"ok": False, "error": "unsupported audio format"})
+
+        if isinstance(audio, FLAC):
+            # FLAC: clear existing pictures, add one front cover
+            audio.clear_pictures()
+            pic = Picture()
+            pic.type = 3  # front cover
+            pic.mime = mime
+            pic.desc = "Cover"
+            pic.data = image_bytes
+            audio.add_picture(pic)
+            audio.save()
+            return json.dumps({"ok": True})
+
+        if isinstance(audio, OggVorbis):
+            import base64
+            import struct
+            audio.pop_all("metadata_block_picture")
+            try:
+                from mutagen.flac import Picture as _Pic
+                pic = _Pic()
+                pic.type = 3
+                pic.mime = mime
+                pic.desc = "Cover"
+                pic.data = image_bytes
+                raw = pic.write()
+                b64 = base64.b64encode(raw).decode()
+                audio["metadata_block_picture"] = [b64]
+                audio.save()
+                return json.dumps({"ok": True})
+            except Exception:
+                pass
+            # Manual fallback: id3-style is best-effort muxape
+            try:
+                from mutagen.mp4 import MP4 as _MP4A
+                pass
+            except Exception:
+                pass
+            return json.dumps({"ok": False, "error": "ogg vorbis picture embed failed"})
+
+        if isinstance(audio, (MP4 := type(audio))):
+            try:
+                from mutagen.mp4 import MP4Cover
+                covr_format = MP4Cover.FORMAT_JPEG if mime == "image/jpeg" else (MP4Cover.FORMAT_PNG if mime == "image/png" else MP4Cover.FORMAT_AUTO)
+                audio["covr"] = [MP4Cover(image_bytes, imageformat=covr_format)]
+                audio.save()
+                return json.dumps({"ok": True})
+            except Exception as exc:
+                return json.dumps({"ok": False, "error": f"mp4 covr embed failed: {exc}"})
+
+        try:
+            ape = APEv2File(path)
+            return json.dumps({"ok": False, "error": "ape embedding not supported"})
+        except Exception:
+            pass
+        # MP4 check again (covers M4A)
+        try:
+            from mutagen.mp4 import MP4 as _Mp, MP4Cover as _MpC
+            mp = _Mp(path)
+            covr_format = _MpC.FORMAT_JPEG if mime == "image/jpeg" else _MpC.FORMAT_PNG
+            mp["covr"] = [_MpC(image_bytes, imageformat=covr_format)]
+            mp.save()
+            return json.dumps({"ok": True})
+        except Exception as exc:
+            return json.dumps({"ok": False, "error": f"mp4/m4a covr embed failed: {exc}"})
+    except Exception as exc:
+        return json.dumps({"ok": False, "error": traceback.format_exc(limit=2)})
+
 def write_tags(path, title, artist, album, genre, year, track, disc):
     """Best-effort embedded tag rewrite via Mutagen. Returns JSON {ok, error?}."""
     try:
@@ -360,6 +507,67 @@ def write_tags(path, title, artist, album, genre, year, track, disc):
     try:
         if not path or not os.path.isfile(path):
             return json.dumps({"ok": False, "error": "file not found"})
+        ext = os.path.splitext(path.lower())[1]
+        # Rebuild ffmpeg-hybrid MP4s: ID3v2 pre-pended (sometimes by accident)
+        # then the real MP4 story. Strip the preamble to make a valid MP4
+        # that Android's MediaScanner/MP4 parsers can actually read.
+        try:
+            with open(path, "rb") as fh:
+                blob = fh.read()
+            stripped = _strip_id3_preamble(blob)
+            if stripped is not None and len(stripped) > 0:
+                with open(path, "wb") as fh:
+                    fh.write(stripped)
+        except Exception:
+            pass
+        # MP4/M4A first, even if ffmpeg-wrapped with an ID3v2 preamble — mutagen/mp4 reads it correctly.
+        try:
+            with open(path, "rb") as fh:
+                head = fh.read(2 * 1024 * 1024)  # first 2 MB enough to find atom seeds
+            if b"ftyp" in head or b"moov" in head:
+                mp4 = MP4File(path)
+                if title: mp4["\xa9nam"] = title
+                if artist: mp4["\xa9ART"] = artist
+                if album: mp4["\xa9alb"] = album
+                if genre: mp4["\xa9gen"] = genre
+                if year: mp4["\xa9day"] = str(year)
+                if track: mp4["trkn"] = [(track, 0)]
+                if disc: mp4["disk"] = [(disc, 0)]
+                mp4.save()
+                return json.dumps({"ok": True})
+        except Exception as exc:
+            # fall through to the ext dispatch instead of failing outright
+            pass
+        # MP3/AAC use ID3; ONLY for those. ID3 preamble inside MP4 is invalid for Android MediaScanner.
+        if ext in (".mp3", ".aac"):
+            # Inspect the second tag; if the file has MP4 atoms we refuse ID3-writing even for .aac extension.
+            head_check = None
+            try:
+                with open(path, "rb") as fh:
+                    fh.seek(min(0, 0))  # already at start
+                    firstbytes = fh.read(16)
+                    if b"ftyp" in firstbytes or b"moov" in firstbytes or firstbytes[4:8] == b"ftyp":
+                        head_check = "mp4"
+            except Exception:
+                head_check = None
+            if head_check == "mp4":
+                return json.dumps({"ok": False, "error": "this .aac is actually mp4 — use mp4 path"})
+            try:
+                tags = ID3(path)
+            except Exception:
+                tags = ID3()
+            def _set(frame):
+                tags.delall(frame.FrameID)
+                tags.add(frame)
+            if title: _set(TIT2(encoding=3, text=title))
+            if artist: _set(TPE1(encoding=3, text=artist))
+            if album: _set(TALB(encoding=3, text=album))
+            if genre: _set(TCON(encoding=3, text=genre))
+            if year: _set(TYER(encoding=3, text=str(year)))
+            if track: _set(TRCK(encoding=3, text=str(track)))
+            if disc: _set(TPOS(encoding=3, text=str(disc)))
+            tags.save(path, v2_version=3)
+            return json.dumps({"ok": True})
         audio = MutagenFile(path)
         if audio is None:
             return json.dumps({"ok": False, "error": "unsupported audio format"})
