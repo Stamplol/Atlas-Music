@@ -51,17 +51,19 @@ jobs:
         id: sim
         run: |
           set -euo pipefail
-          SIM="$(xcrun simctl list devices available \
-            | grep -E '^    iPhone (1[5-9]|[2-9][0-9])' \
-            | head -n 1 \
-            | sed -E 's/^ +([^ ]+) .*/\1/')"
-          if [ -z "$SIM" ]; then
+          LINE="$(xcrun simctl list devices available \
+            | grep -E '^    iPhone (1[5-9]|[2-9][0-9])' | head -n 1)"
+          SIM_ID="$(echo "$LINE" | grep -oE '[0-9A-Fa-f]{8}-[0-9A-Fa-f-]{27}' | head -n 1)"
+          if [ -z "$SIM_ID" ]; then
             echo "::error::No available iPhone simulator found on this runner"
             xcrun simctl list devices available
             exit 1
           fi
-          echo "name=$SIM" >> "$GITHUB_OUTPUT"
-          echo "Using simulator: $SIM"
+          SIM_NAME="$(echo "$LINE" | sed -E "s/^ +(.+) \(${SIM_ID}\).*/\1/")"
+          xcrun simctl boot "$SIM_ID" || true
+          echo "id=$SIM_ID" >> "$GITHUB_OUTPUT"
+          echo "name=$SIM_NAME" >> "$GITHUB_OUTPUT"
+          echo "Using simulator: $SIM_NAME ($SIM_ID)"
 
       - name: Build all targets for simulator (no signing)
         run: |
@@ -85,7 +87,7 @@ jobs:
             -scheme AtlasMusic \
             -configuration Debug \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=${{ steps.sim.outputs.name }}' \
+            -destination 'platform=iOS Simulator,id=${{ steps.sim.outputs.id }}' \
             -derivedDataPath ios/.build/DerivedData \
             -resultBundlePath ios/.build/AtlasMusic.xcresult \
             CODE_SIGNING_ALLOWED=NO \
