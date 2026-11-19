@@ -469,7 +469,7 @@ final class MediaFormatHelperTests: XCTestCase {
     func testWebmExtensionNormalizesToMatroskaAudioForMediaStoreCompatibility() {
         let normalize = MediaFormatHelper.normalizeDownloadExtension
         let mime = MediaFormatHelper.mimeForExtension
-        let ext = normalize("webm")
+        let ext = normalize("webm", nil)
         XCTAssertEqual(ext, "mka")
         XCTAssertEqual(mime(ext), "audio/x-matroska")
         XCTAssertNotEqual(mime(ext), "audio/webm")
@@ -486,12 +486,12 @@ final class MediaFormatHelperTests: XCTestCase {
         // Android "extension + header" assertions are exercised directly against the sniffer.
         // Bare array literals let Swift infer Data vs [UInt8] from the actual API signature.
         let detect = MediaFormatHelper.detectExtensionFromMagic
-        XCTAssertEqual(detect([0x1A, 0x45, 0xDF, 0xA3, 0x01]), "mka")          // EBML
-        XCTAssertEqual(detect([0x4F, 0x67, 0x67, 0x53, 0x00]), "ogg")          // "OggS\0"
-        XCTAssertEqual(detect([0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70]), "m4a")  // "ftyp"
-        XCTAssertEqual(detect([0x66, 0x4C, 0x61, 0x43, 0x00]), "flac")         // "fLaC"
-        XCTAssertEqual(detect([0x52, 0x49, 0x46, 0x46, 0x00]), "wav")          // "RIFF"
-        XCTAssertEqual(detect([0x49, 0x44, 0x33, 0x03, 0x00]), "mp3")          // "ID3"
+        XCTAssertEqual(detect(Data([0x1A, 0x45, 0xDF, 0xA3, 0x01])), "mka")          // EBML
+        XCTAssertEqual(detect(Data([0x4F, 0x67, 0x67, 0x53, 0x00])), "ogg")          // "OggS\0"
+        XCTAssertEqual(detect(Data([0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70])), "m4a")  // "ftyp"
+        XCTAssertEqual(detect(Data([0x66, 0x4C, 0x61, 0x43, 0x00])), "flac")         // "fLaC"
+        XCTAssertEqual(detect(Data([0x52, 0x49, 0x46, 0x46, 0x00])), "wav")          // "RIFF"
+        XCTAssertEqual(detect(Data([0x49, 0x44, 0x33, 0x03, 0x00])), "mp3")          // "ID3"
     }
 
     func testDisplayAudioFormatLabelProducesCleanBadges() {
