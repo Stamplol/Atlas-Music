@@ -48,7 +48,7 @@ def main():
         local_sha = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=os.path.dirname(__file__) + "/..", text=True
         ).strip()
-        deadline = time.time() + 480
+        deadline = time.time() + 1200
         while time.time() < deadline:
             runs = json.loads(get(f"{API}/actions/runs?branch={BRANCH}&per_page=5"))
             match = next((r for r in runs["workflow_runs"] if r["head_sha"] == local_sha), None)

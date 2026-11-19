@@ -491,7 +491,7 @@ widget_common = f"""\t\t\t\tCODE_SIGN_ENTITLEMENTS = {rel(widget_entitlement)};
 \t\t\t\tLD_RUNPATH_SEARCH_PATHS = ( "$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks" );
 \t\t\t\tMARKETING_VERSION = 1.0.4;
 \t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = {WIDGET_BUNDLE_ID};
-\t\t\t\tPRODUCT_BUNDLE_PACKAGE_TYPE = APEX;
+\t\t\t\tPRODUCT_BUNDLE_PACKAGE_TYPE = "XPC!";
 \t\t\t\tPRODUCT_NAME = "$(TARGET_NAME)";
 \t\t\t\tSKIP_INSTALL = YES;
 \t\t\t\tSWIFT_ACTIVE_COMPILATION_CONDITIONS = ATLAS_WIDGET_EXTENSION;
