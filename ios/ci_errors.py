@@ -81,7 +81,7 @@ def main():
             continue
         seen.add(key)
         loc = f"{a.get('path')}:{a.get('start_line')}" if a.get("path") else "?"
-        print(f"{loc}: {msg[:400]}")
+        print(f"{loc}: {msg[:4000]}")
         for extra in (a.get("details") or "").splitlines()[:4]:
             print(f"    {extra.strip()[:300]}")
     print(f"Run page: {run['html_url']}")
