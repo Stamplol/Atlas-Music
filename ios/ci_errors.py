@@ -31,7 +31,11 @@ def get(url):
                 time.sleep(delay)
                 continue
             raise
-    raise RuntimeError("GitHub API remained rate limited")
+        except urllib.error.URLError:
+            print(f"  network error; retrying in 20s (attempt {attempt + 1})")
+            time.sleep(20)
+            continue
+    raise RuntimeError("GitHub API unavailable")
 
 
 def main():

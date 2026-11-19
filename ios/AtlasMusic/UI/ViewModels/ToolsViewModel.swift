@@ -54,7 +54,8 @@ import WidgetKit
         startTicker()
     }
 
-    deinit { ticker?.cancel() }
+    // No deinit: the ticker captures self weakly and exits on its next tick once self is gone.
+    // (`ticker` is @MainActor-isolated, so a nonisolated deinit cannot touch it.)
 
     // MARK: - Ticking (countdown + sleep countdown + cheap stat refresh)
 

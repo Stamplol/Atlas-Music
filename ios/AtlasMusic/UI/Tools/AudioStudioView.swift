@@ -675,7 +675,7 @@ private struct FrequencyGraph: View {
                 fill.closeSubpath()
                 context.fill(fill, with: .linearGradient(
                     Gradient(colors: [colors.accent.opacity(0.28), colors.accent.opacity(0.03)]),
-                    startPoint: .top, endPoint: .bottom
+                    startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: 0, y: h)
                 ))
                 context.stroke(stroke, with: .color(enabled ? colors.accent : colors.textMuted),
                                style: StrokeStyle(lineWidth: 2.6, lineCap: .round, lineJoin: .round))
