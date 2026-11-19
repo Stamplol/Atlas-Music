@@ -9,6 +9,7 @@ linker, simulator-launch and test-runner failures (which have no source location
 import os
 import re
 import sys
+from collections import deque
 
 PATTERN = re.compile(r"^(.*?):(\d+):(\d+): (error|warning): (.*)$")
 GENERIC = re.compile(r"(error:|\*\* TEST FAILED \*\*|fatal error|Test suite .* failed|"
@@ -23,10 +24,12 @@ def escape_property(value: str) -> str:
 def main() -> int:
     workspace = os.environ.get("GITHUB_WORKSPACE", os.getcwd())
     emitted = 0
+    recent: deque[str] = deque(maxlen=24)
     for raw in sys.stdin:
         line = raw.rstrip("\n")
         sys.stdout.write(raw)
         sys.stdout.flush()
+        recent.append(line)
         m = PATTERN.match(line)
         if m and m.group(4) == "error":
             path, lineno, col, _, message = m.groups()
@@ -39,7 +42,11 @@ def main() -> int:
             )
             emitted += 1
         elif GENERIC.search(line) and emitted < 80:
-            print("::error::" + line.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")[:600], flush=True)
+            if "fatal error" in line.lower() or "test failed" in line.lower():
+                context = " | ".join(recent)[:2500]
+                print("::error::" + context.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"), flush=True)
+            else:
+                print("::error::" + line.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")[:600], flush=True)
             emitted += 1
     return 0
 
