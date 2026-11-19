@@ -102,8 +102,9 @@ system APIs, so a few subsystems are necessarily different:
   requires a **separate Widget Extension target** with its own `@main`/`WidgetBundle` (a single
   Xcode target can only have one `@main`, the app). The generator now emits that
   `AtlasMusicWidget` app-extension target automatically — no manual Xcode step is needed. Its
-  entry point is the checked-in `ios/AtlasMusicWidget/AtlasMusicWidgetBundle.swift`, and both
-  `Widgets/*.swift` files are compiled into the app *and* the extension. The app and extension
+  entry point lives in `Widgets/AtlasWidgets.swift` behind `#if ATLAS_WIDGET_EXTENSION`
+  (the generator defines that flag only for the extension), and both `Widgets/*.swift` files
+  are compiled into the app *and* the extension. The app and extension
   share the `group.com.atlas.music` App Group via the checked-in `.entitlements` files. The
   widget code is deliberately self-contained (it reads only App Group `UserDefaults`) so it
   compiles unchanged in the extension. Intents write a command into the suite and the running

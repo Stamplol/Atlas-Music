@@ -74,7 +74,7 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath ios/.build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
-            build 2>&1 | tee ios/.build/xcodebuild-build.log
+            build 2>&1 | tee ios/.build/xcodebuild-build.log | python3 ios/xcode_annotate.py
 
       - name: Run unit tests (60 XCTest cases)
         run: |
@@ -89,7 +89,7 @@ jobs:
             -derivedDataPath ios/.build/DerivedData \
             -resultBundlePath ios/.build/AtlasMusic.xcresult \
             CODE_SIGNING_ALLOWED=NO \
-            2>&1 | tee ios/.build/xcodebuild-test.log
+            2>&1 | tee ios/.build/xcodebuild-test.log | python3 ios/xcode_annotate.py
 
       - name: Upload test results
         if: always()

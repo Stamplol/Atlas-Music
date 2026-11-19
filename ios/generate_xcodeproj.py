@@ -75,8 +75,6 @@ shared_swift = sorted((SRC / "Widgets").glob("*.swift"))
 app_entitlement = ROOT / f"{TARGET_NAME}.entitlements"
 widget_entitlement = ROOT / f"{WIDGET_NAME}.entitlements"
 
-if not widget_swift:
-    raise SystemExit("Missing ios/AtlasMusicWidget/AtlasMusicWidgetBundle.swift")
 required_test_files = [TEST_SRC / "AtlasMusicTests.swift", TEST_SRC / "AudioDspTests.swift"]
 missing = [p for p in shared_swift + required_test_files + [app_entitlement, widget_entitlement] if not p.is_file()]
 if missing:
@@ -496,6 +494,7 @@ widget_common = f"""\t\t\t\tCODE_SIGN_ENTITLEMENTS = {rel(widget_entitlement)};
 \t\t\t\tPRODUCT_BUNDLE_PACKAGE_TYPE = APPL;
 \t\t\t\tPRODUCT_NAME = "$(TARGET_NAME)";
 \t\t\t\tSKIP_INSTALL = YES;
+\t\t\t\tSWIFT_ACTIVE_COMPILATION_CONDITIONS = ATLAS_WIDGET_EXTENSION;
 \t\t\t\tSWIFT_EMIT_LOC_STRINGS = YES;
 \t\t\t\tSWIFT_VERSION = 5.10;
 \t\t\t\tTARGETED_DEVICE_FAMILY = "1,2";"""

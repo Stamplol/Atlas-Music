@@ -331,9 +331,14 @@ struct AtlasMusicWidget: Widget {
     }
 }
 
-/// Kept as a type (no @main in the app target) so a Widget Extension can declare
-/// `@main struct AtlasWidgetBundle: WidgetBundle { var body: some Widget { AtlasWidgets().body } }`.
-struct AtlasWidgets: WidgetBundle {
+#if ATLAS_WIDGET_EXTENSION
+/// Widget Extension entry point. The generator defines `ATLAS_WIDGET_EXTENSION` only for the
+/// extension target, so the app keeps its own `@main` in AtlasMusicApp.swift. Keeping the entry
+/// point in this file (which already imports WidgetKit) avoids a separate file-level import
+/// resolution issue seen with a standalone bundle file under Xcode 26.
+@main
+struct AtlasWidgetExtensionEntry: WidgetBundle {
     var body: some Widget { AtlasMusicWidget() }
 }
+#endif
 

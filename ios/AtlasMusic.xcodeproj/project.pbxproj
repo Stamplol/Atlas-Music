@@ -89,7 +89,6 @@
 		BF05547064545D5DCA9F069C /* AudioDspTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F531DAC81C6842FE9B5B59C6 /* AudioDspTests.swift */; };
 		B440424F9F5018E601379CFD /* AtlasWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4D9201D1B64A223D5AD3262 /* AtlasWidgets.swift */; };
 		B9F279B800675F0FD157CE13 /* PlaybackIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA0AF547A93E0275CA4AB3A6 /* PlaybackIntents.swift */; };
-		BB9C67B8126D28FF92FDC6BB /* AtlasMusicWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B15B3B64FE3C772379F2DE /* AtlasMusicWidgetBundle.swift */; };
 		B91F06558971682A40916A1B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F91F06558971682A40916A1B /* Assets.xcassets */; };
 		BBA367BF86A2CBBD0A355935 /* AtlasMusicWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = FF7B5FBC42608138C39B371F /* AtlasMusicWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -126,92 +125,91 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		F1AB18317815D65085A98113 /* AtlasMusicApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusicApp.swift; sourceTree = "<group>"; };
-		F26F47C8857B2622395352ED /* AudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEngine.swift; sourceTree = "<group>"; };
-		F3D9EBBEA0AC16F87BE79359 /* PlayerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerController.swift; sourceTree = "<group>"; };
-		F35F84FC57765CF761FE6594 /* PlayerUiState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerUiState.swift; sourceTree = "<group>"; };
-		F29DF5092F9EB882A64DF700 /* DownloadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadManager.swift; sourceTree = "<group>"; };
-		F5581EF76EB26168B14E1796 /* DownloadTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadTask.swift; sourceTree = "<group>"; };
-		FB954DF4528638C11146898A /* Enums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enums.swift; sourceTree = "<group>"; };
-		F3A7C744C1F060B3CF93724D /* PlayEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayEvent.swift; sourceTree = "<group>"; };
-		F2463719646C49133F2FA4ED /* Playlist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Playlist.swift; sourceTree = "<group>"; };
-		FF1DB87FA216028AFE7442A9 /* PomodoroSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PomodoroSession.swift; sourceTree = "<group>"; };
-		F0861DC0E1977AA527D46851 /* Track.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Track.swift; sourceTree = "<group>"; };
-		F28C8387B186D477BC68F403 /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
-		F36CA10B5334A55F30B757AB /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
-		FA72E72ACF7CF41B894CFBC8 /* LibraryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScanner.swift; sourceTree = "<group>"; };
-		F3E4205F2AFC7B4D48FB0405 /* LyricsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricsRepository.swift; sourceTree = "<group>"; };
-		FDA4E4282974C1B2A1670720 /* MusicRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicRepository.swift; sourceTree = "<group>"; };
-		F4F92F0CFBE3DC294336642E /* PlaylistRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistRepository.swift; sourceTree = "<group>"; };
-		F16061F162261A2FDFF5F27E /* AtlasFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasFont.swift; sourceTree = "<group>"; };
-		FCA63E9ECE48C4AAA2992C2E /* AtlasTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasTheme.swift; sourceTree = "<group>"; };
-		FE8F9840CA7B84201A9C90E4 /* AudioDsp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDsp.swift; sourceTree = "<group>"; };
-		F68791A64AA0D4A1749D8704 /* BackgroundEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundEngine.swift; sourceTree = "<group>"; };
-		FEC7804A007458C139E95EBF /* BuiltInExclusions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuiltInExclusions.swift; sourceTree = "<group>"; };
-		F22A13151637344A453E526B /* ClickWheelMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClickWheelMath.swift; sourceTree = "<group>"; };
-		F18E433A62321E023061C074 /* CoverArtKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverArtKit.swift; sourceTree = "<group>"; };
-		FC9702BF459F0C3824F4CF65 /* DownloadStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadStateMachine.swift; sourceTree = "<group>"; };
-		F34F06CA4F6DF9E7330D975D /* DuplicateDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateDetector.swift; sourceTree = "<group>"; };
-		F961C92F8BD14E1A4B8ACEAC /* EqCurves.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EqCurves.swift; sourceTree = "<group>"; };
-		F8DB6F193C8FC611E00C2174 /* Format.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Format.swift; sourceTree = "<group>"; };
-		F209E355DDA2706705FBC3D5 /* HeadphoneProfiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadphoneProfiles.swift; sourceTree = "<group>"; };
-		FA0A71BE46F50B599047177B /* LibraryFolder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryFolder.swift; sourceTree = "<group>"; };
-		F1068528645798518802596D /* LyricsParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricsParser.swift; sourceTree = "<group>"; };
-		F97EEBF3FBD181E43A1ED68E /* MediaFormatHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaFormatHelper.swift; sourceTree = "<group>"; };
-		FA3C2194A956A912D3AE3518 /* OutputRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputRouter.swift; sourceTree = "<group>"; };
-		FC5A36B6876E4AC04B11E87E /* SoundCloudGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundCloudGate.swift; sourceTree = "<group>"; };
-		FDE7975F4087FA9E7BB02E41 /* UrlValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UrlValidator.swift; sourceTree = "<group>"; };
-		FB9A5682D02593E70F6576F4 /* YtdlpVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YtdlpVersion.swift; sourceTree = "<group>"; };
-		F543FB52D16CA503D3C175B6 /* AlbumArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumArt.swift; sourceTree = "<group>"; };
-		F706BB4A440728DA6FA7035A /* AtlasIconButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasIconButton.swift; sourceTree = "<group>"; };
-		F3C99E7245CF7B91002E3AA1 /* Dialogs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dialogs.swift; sourceTree = "<group>"; };
-		FC349E3561514A3465FD81E8 /* EmptyState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyState.swift; sourceTree = "<group>"; };
-		FF62CFC66A3764F3301783C4 /* MeridianArc.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeridianArc.swift; sourceTree = "<group>"; };
-		FC82E1D1388B60846458E62C /* MiniPlayerBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniPlayerBar.swift; sourceTree = "<group>"; };
-		F54478D1AFE5AFB13A17E0B0 /* SectionHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionHeader.swift; sourceTree = "<group>"; };
-		FE48DAC8A0DB1AC6D73D797A /* StatPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatPill.swift; sourceTree = "<group>"; };
-		F11216447FA4B54C710E673D /* TrackListContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackListContent.swift; sourceTree = "<group>"; };
-		FBDB22F3B0368A472B8AE4CB /* TrackRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackRow.swift; sourceTree = "<group>"; };
-		FF44BD1F20A976A505EF85ED /* AppTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTab.swift; sourceTree = "<group>"; };
-		FE9A6D6961A0C434E71915B2 /* PermissionGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionGate.swift; sourceTree = "<group>"; };
-		F8A194102C19B1E6EE6846BA /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
-		F389187F558B1A124284E8FD /* DownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsView.swift; sourceTree = "<group>"; };
-		FE72B1CF3AAD1817A54A0918 /* DuplicatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicatesView.swift; sourceTree = "<group>"; };
-		F0A56BEC4C38EE523044D51C /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
-		FAA15C47782B4174D8729010 /* IpodModeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IpodModeView.swift; sourceTree = "<group>"; };
-		F7C1A7EE9A43AE6F1AB40E66 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
-		F58A2F0A4A40744FA9CAFA72 /* LyricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricsView.swift; sourceTree = "<group>"; };
-		F1BB759018E5CD12092B455F /* NowPlayingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingView.swift; sourceTree = "<group>"; };
-		F44E488F91FE216719815F52 /* PlaylistDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistDetailView.swift; sourceTree = "<group>"; };
-		FA5322A5F392B1DB76041B1B /* QueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueView.swift; sourceTree = "<group>"; };
-		F243C145A882AC89FE38B464 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
-		F077833FD6B9B9465FB96C4F /* SmartListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartListView.swift; sourceTree = "<group>"; };
-		F01EFC24F58125001D714CAE /* ToolsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolsView.swift; sourceTree = "<group>"; };
-		F4FAB639E41DBC80B68D34C1 /* TrackInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackInfoView.swift; sourceTree = "<group>"; };
-		FB6569C3602579CD90D1241E /* AudioStudioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioStudioView.swift; sourceTree = "<group>"; };
-		FD2E9ACE073CEE7DF33E2317 /* FocusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusView.swift; sourceTree = "<group>"; };
-		F557F6BC2EE6031045FBE1B9 /* LibraryCareView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryCareView.swift; sourceTree = "<group>"; };
-		F74F36C9A74BCDC2B1CF6CB6 /* SleepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepView.swift; sourceTree = "<group>"; };
-		FA7AC9F4E99BC6899AE749EA /* ToolsHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolsHub.swift; sourceTree = "<group>"; };
-		F4E2F1759658D5BE8886C938 /* ToolsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolsViewModel.swift; sourceTree = "<group>"; };
-		F4D9201D1B64A223D5AD3262 /* AtlasWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasWidgets.swift; sourceTree = "<group>"; };
-		FA0AF547A93E0275CA4AB3A6 /* PlaybackIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackIntents.swift; sourceTree = "<group>"; };
-		F9B15B3B64FE3C772379F2DE /* AtlasMusicWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusicWidgetBundle.swift; sourceTree = "<group>"; };
-		F3FC13F2DC8A51E025A4B920 /* AtlasMusicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusicTests.swift; sourceTree = "<group>"; };
-		F531DAC81C6842FE9B5B59C6 /* AudioDspTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDspTests.swift; sourceTree = "<group>"; };
-		F9049EEB7F5F84FC7317319F /* jetbrains_mono_400.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = jetbrains_mono_400.ttf; sourceTree = "<group>"; };
-		F21921B8364F93DE967B9ACC /* jetbrains_mono_500.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = jetbrains_mono_500.ttf; sourceTree = "<group>"; };
-		F5D7758489EB830CFEC28DF0 /* jetbrains_mono_600.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = jetbrains_mono_600.ttf; sourceTree = "<group>"; };
-		FEE783CC0B3E2D747F9319E3 /* jetbrains_mono_700.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = jetbrains_mono_700.ttf; sourceTree = "<group>"; };
-		FBF93C75FC0D81690B25DD46 /* space_grotesk_400.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = space_grotesk_400.ttf; sourceTree = "<group>"; };
-		FC4C485402A9C6B4B04CE5EA /* space_grotesk_500.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = space_grotesk_500.ttf; sourceTree = "<group>"; };
-		FB79791C87BA41E312CE47A5 /* space_grotesk_600.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = space_grotesk_600.ttf; sourceTree = "<group>"; };
-		F0F29B751E31E9666DAAC303 /* space_grotesk_700.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = space_grotesk_700.ttf; sourceTree = "<group>"; };
-		F411040DF457D87ECD98D85C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		F62B4C29AB8DA0D689A136C3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F1AB18317815D65085A98113 /* AtlasMusicApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/AtlasMusicApp.swift; sourceTree = "<group>"; };
+		F26F47C8857B2622395352ED /* AudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Audio/AudioEngine.swift; sourceTree = "<group>"; };
+		F3D9EBBEA0AC16F87BE79359 /* PlayerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Audio/PlayerController.swift; sourceTree = "<group>"; };
+		F35F84FC57765CF761FE6594 /* PlayerUiState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Audio/PlayerUiState.swift; sourceTree = "<group>"; };
+		F29DF5092F9EB882A64DF700 /* DownloadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Downloads/DownloadManager.swift; sourceTree = "<group>"; };
+		F5581EF76EB26168B14E1796 /* DownloadTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Models/DownloadTask.swift; sourceTree = "<group>"; };
+		FB954DF4528638C11146898A /* Enums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Models/Enums.swift; sourceTree = "<group>"; };
+		F3A7C744C1F060B3CF93724D /* PlayEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Models/PlayEvent.swift; sourceTree = "<group>"; };
+		F2463719646C49133F2FA4ED /* Playlist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Models/Playlist.swift; sourceTree = "<group>"; };
+		FF1DB87FA216028AFE7442A9 /* PomodoroSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Models/PomodoroSession.swift; sourceTree = "<group>"; };
+		F0861DC0E1977AA527D46851 /* Track.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Models/Track.swift; sourceTree = "<group>"; };
+		F28C8387B186D477BC68F403 /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Persistence/Persistence.swift; sourceTree = "<group>"; };
+		F36CA10B5334A55F30B757AB /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Persistence/SettingsStore.swift; sourceTree = "<group>"; };
+		FA72E72ACF7CF41B894CFBC8 /* LibraryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Repositories/LibraryScanner.swift; sourceTree = "<group>"; };
+		F3E4205F2AFC7B4D48FB0405 /* LyricsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Repositories/LyricsRepository.swift; sourceTree = "<group>"; };
+		FDA4E4282974C1B2A1670720 /* MusicRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Repositories/MusicRepository.swift; sourceTree = "<group>"; };
+		F4F92F0CFBE3DC294336642E /* PlaylistRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Repositories/PlaylistRepository.swift; sourceTree = "<group>"; };
+		F16061F162261A2FDFF5F27E /* AtlasFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Theme/AtlasFont.swift; sourceTree = "<group>"; };
+		FCA63E9ECE48C4AAA2992C2E /* AtlasTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Theme/AtlasTheme.swift; sourceTree = "<group>"; };
+		FE8F9840CA7B84201A9C90E4 /* AudioDsp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Utils/AudioDsp.swift; sourceTree = "<group>"; };
+		F68791A64AA0D4A1749D8704 /* BackgroundEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Utils/BackgroundEngine.swift; sourceTree = "<group>"; };
+		FEC7804A007458C139E95EBF /* BuiltInExclusions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Utils/BuiltInExclusions.swift; sourceTree = "<group>"; };
+		F22A13151637344A453E526B /* ClickWheelMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Utils/ClickWheelMath.swift; sourceTree = "<group>"; };
+		F18E433A62321E023061C074 /* CoverArtKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Utils/CoverArtKit.swift; sourceTree = "<group>"; };
+		FC9702BF459F0C3824F4CF65 /* DownloadStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Utils/DownloadStateMachine.swift; sourceTree = "<group>"; };
+		F34F06CA4F6DF9E7330D975D /* DuplicateDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Utils/DuplicateDetector.swift; sourceTree = "<group>"; };
+		F961C92F8BD14E1A4B8ACEAC /* EqCurves.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Utils/EqCurves.swift; sourceTree = "<group>"; };
+		F8DB6F193C8FC611E00C2174 /* Format.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Utils/Format.swift; sourceTree = "<group>"; };
+		F209E355DDA2706705FBC3D5 /* HeadphoneProfiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Utils/HeadphoneProfiles.swift; sourceTree = "<group>"; };
+		FA0A71BE46F50B599047177B /* LibraryFolder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Utils/LibraryFolder.swift; sourceTree = "<group>"; };
+		F1068528645798518802596D /* LyricsParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Utils/LyricsParser.swift; sourceTree = "<group>"; };
+		F97EEBF3FBD181E43A1ED68E /* MediaFormatHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Utils/MediaFormatHelper.swift; sourceTree = "<group>"; };
+		FA3C2194A956A912D3AE3518 /* OutputRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Utils/OutputRouter.swift; sourceTree = "<group>"; };
+		FC5A36B6876E4AC04B11E87E /* SoundCloudGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Utils/SoundCloudGate.swift; sourceTree = "<group>"; };
+		FDE7975F4087FA9E7BB02E41 /* UrlValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Utils/UrlValidator.swift; sourceTree = "<group>"; };
+		FB9A5682D02593E70F6576F4 /* YtdlpVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Core/Utils/YtdlpVersion.swift; sourceTree = "<group>"; };
+		F543FB52D16CA503D3C175B6 /* AlbumArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Components/AlbumArt.swift; sourceTree = "<group>"; };
+		F706BB4A440728DA6FA7035A /* AtlasIconButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Components/AtlasIconButton.swift; sourceTree = "<group>"; };
+		F3C99E7245CF7B91002E3AA1 /* Dialogs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Components/Dialogs.swift; sourceTree = "<group>"; };
+		FC349E3561514A3465FD81E8 /* EmptyState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Components/EmptyState.swift; sourceTree = "<group>"; };
+		FF62CFC66A3764F3301783C4 /* MeridianArc.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Components/MeridianArc.swift; sourceTree = "<group>"; };
+		FC82E1D1388B60846458E62C /* MiniPlayerBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Components/MiniPlayerBar.swift; sourceTree = "<group>"; };
+		F54478D1AFE5AFB13A17E0B0 /* SectionHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Components/SectionHeader.swift; sourceTree = "<group>"; };
+		FE48DAC8A0DB1AC6D73D797A /* StatPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Components/StatPill.swift; sourceTree = "<group>"; };
+		F11216447FA4B54C710E673D /* TrackListContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Components/TrackListContent.swift; sourceTree = "<group>"; };
+		FBDB22F3B0368A472B8AE4CB /* TrackRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Components/TrackRow.swift; sourceTree = "<group>"; };
+		FF44BD1F20A976A505EF85ED /* AppTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Navigation/AppTab.swift; sourceTree = "<group>"; };
+		FE9A6D6961A0C434E71915B2 /* PermissionGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Root/PermissionGate.swift; sourceTree = "<group>"; };
+		F8A194102C19B1E6EE6846BA /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Root/RootView.swift; sourceTree = "<group>"; };
+		F389187F558B1A124284E8FD /* DownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Screens/DownloadsView.swift; sourceTree = "<group>"; };
+		FE72B1CF3AAD1817A54A0918 /* DuplicatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Screens/DuplicatesView.swift; sourceTree = "<group>"; };
+		F0A56BEC4C38EE523044D51C /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Screens/HomeView.swift; sourceTree = "<group>"; };
+		FAA15C47782B4174D8729010 /* IpodModeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Screens/IpodModeView.swift; sourceTree = "<group>"; };
+		F7C1A7EE9A43AE6F1AB40E66 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Screens/LibraryView.swift; sourceTree = "<group>"; };
+		F58A2F0A4A40744FA9CAFA72 /* LyricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Screens/LyricsView.swift; sourceTree = "<group>"; };
+		F1BB759018E5CD12092B455F /* NowPlayingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Screens/NowPlayingView.swift; sourceTree = "<group>"; };
+		F44E488F91FE216719815F52 /* PlaylistDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Screens/PlaylistDetailView.swift; sourceTree = "<group>"; };
+		FA5322A5F392B1DB76041B1B /* QueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Screens/QueueView.swift; sourceTree = "<group>"; };
+		F243C145A882AC89FE38B464 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Screens/SearchView.swift; sourceTree = "<group>"; };
+		F077833FD6B9B9465FB96C4F /* SmartListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Screens/SmartListView.swift; sourceTree = "<group>"; };
+		F01EFC24F58125001D714CAE /* ToolsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Screens/ToolsView.swift; sourceTree = "<group>"; };
+		F4FAB639E41DBC80B68D34C1 /* TrackInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Screens/TrackInfoView.swift; sourceTree = "<group>"; };
+		FB6569C3602579CD90D1241E /* AudioStudioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Tools/AudioStudioView.swift; sourceTree = "<group>"; };
+		FD2E9ACE073CEE7DF33E2317 /* FocusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Tools/FocusView.swift; sourceTree = "<group>"; };
+		F557F6BC2EE6031045FBE1B9 /* LibraryCareView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Tools/LibraryCareView.swift; sourceTree = "<group>"; };
+		F74F36C9A74BCDC2B1CF6CB6 /* SleepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Tools/SleepView.swift; sourceTree = "<group>"; };
+		FA7AC9F4E99BC6899AE749EA /* ToolsHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/Tools/ToolsHub.swift; sourceTree = "<group>"; };
+		F4E2F1759658D5BE8886C938 /* ToolsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/UI/ViewModels/ToolsViewModel.swift; sourceTree = "<group>"; };
+		F4D9201D1B64A223D5AD3262 /* AtlasWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Widgets/AtlasWidgets.swift; sourceTree = "<group>"; };
+		FA0AF547A93E0275CA4AB3A6 /* PlaybackIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusic/Widgets/PlaybackIntents.swift; sourceTree = "<group>"; };
+		F3FC13F2DC8A51E025A4B920 /* AtlasMusicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusicTests/AtlasMusicTests.swift; sourceTree = "<group>"; };
+		F531DAC81C6842FE9B5B59C6 /* AudioDspTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasMusicTests/AudioDspTests.swift; sourceTree = "<group>"; };
+		F9049EEB7F5F84FC7317319F /* jetbrains_mono_400.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = AtlasMusic/Resources/Fonts/jetbrains_mono_400.ttf; sourceTree = "<group>"; };
+		F21921B8364F93DE967B9ACC /* jetbrains_mono_500.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = AtlasMusic/Resources/Fonts/jetbrains_mono_500.ttf; sourceTree = "<group>"; };
+		F5D7758489EB830CFEC28DF0 /* jetbrains_mono_600.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = AtlasMusic/Resources/Fonts/jetbrains_mono_600.ttf; sourceTree = "<group>"; };
+		FEE783CC0B3E2D747F9319E3 /* jetbrains_mono_700.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = AtlasMusic/Resources/Fonts/jetbrains_mono_700.ttf; sourceTree = "<group>"; };
+		FBF93C75FC0D81690B25DD46 /* space_grotesk_400.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = AtlasMusic/Resources/Fonts/space_grotesk_400.ttf; sourceTree = "<group>"; };
+		FC4C485402A9C6B4B04CE5EA /* space_grotesk_500.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = AtlasMusic/Resources/Fonts/space_grotesk_500.ttf; sourceTree = "<group>"; };
+		FB79791C87BA41E312CE47A5 /* space_grotesk_600.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = AtlasMusic/Resources/Fonts/space_grotesk_600.ttf; sourceTree = "<group>"; };
+		F0F29B751E31E9666DAAC303 /* space_grotesk_700.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = AtlasMusic/Resources/Fonts/space_grotesk_700.ttf; sourceTree = "<group>"; };
+		F411040DF457D87ECD98D85C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = AtlasMusic/Info.plist; sourceTree = "<group>"; };
+		F62B4C29AB8DA0D689A136C3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = AtlasMusicWidget/Info.plist; sourceTree = "<group>"; };
 		F300A3E640BB361FAF1A79B6 /* AtlasMusic.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = AtlasMusic.entitlements; sourceTree = "<group>"; };
 		F68DE78A418F344EA7AD4AA1 /* AtlasMusicWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = AtlasMusicWidget.entitlements; sourceTree = "<group>"; };
-		F91F06558971682A40916A1B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		F91F06558971682A40916A1B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = AtlasMusic/Resources/Assets.xcassets; sourceTree = "<group>"; };
 		F775C59FCA8A353373634351 /* AtlasMusic.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AtlasMusic.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FF7B5FBC42608138C39B371F /* AtlasMusicWidget.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = AtlasMusicWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		F63E5B5534A38E144E8D50B9 /* AtlasMusicTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AtlasMusicTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -248,8 +246,8 @@
 				F300A3E640BB361FAF1A79B6 /* AtlasMusic.entitlements */,
 				F68DE78A418F344EA7AD4AA1 /* AtlasMusicWidget.entitlements */,
 				G33E16AA15DCEEE69613A2A3 /* AtlasMusic */,
-				G82AA9A6681F9EEE2F00909F /* AtlasMusicWidget */,
 				G12B38543BB533AC61A6373C /* AtlasMusicTests */,
+				G82AA9A6681F9EEE2F00909F /* AtlasMusicWidget */,
 				GFE0A091FDBFB3E9C31B7A1B /* Products */,
 			);
 			name = "";
@@ -486,15 +484,6 @@
 			name = Fonts;
 			sourceTree = "<group>";
 		};
-		G82AA9A6681F9EEE2F00909F /* AtlasMusicWidget */ = {
-			isa = PBXGroup;
-			children = (
-				F9B15B3B64FE3C772379F2DE /* AtlasMusicWidgetBundle.swift */,
-				F62B4C29AB8DA0D689A136C3 /* Info.plist */,
-			);
-			name = AtlasMusicWidget;
-			sourceTree = "<group>";
-		};
 		G12B38543BB533AC61A6373C /* AtlasMusicTests */ = {
 			isa = PBXGroup;
 			children = (
@@ -502,6 +491,14 @@
 				F531DAC81C6842FE9B5B59C6 /* AudioDspTests.swift */,
 			);
 			name = AtlasMusicTests;
+			sourceTree = "<group>";
+		};
+		G82AA9A6681F9EEE2F00909F /* AtlasMusicWidget */ = {
+			isa = PBXGroup;
+			children = (
+				F62B4C29AB8DA0D689A136C3 /* Info.plist */,
+			);
+			name = AtlasMusicWidget;
 			sourceTree = "<group>";
 		};
 		GFE0A091FDBFB3E9C31B7A1B /* Products */ = {
@@ -721,7 +718,6 @@
 			files = (
 				B440424F9F5018E601379CFD /* AtlasWidgets.swift in Sources */,
 				B9F279B800675F0FD157CE13 /* PlaybackIntents.swift in Sources */,
-				BB9C67B8126D28FF92FDC6BB /* AtlasMusicWidgetBundle.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -847,6 +843,7 @@
 				PRODUCT_BUNDLE_PACKAGE_TYPE = APPL;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = ATLAS_WIDGET_EXTENSION;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.10;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -875,6 +872,7 @@
 				PRODUCT_BUNDLE_PACKAGE_TYPE = APPL;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = ATLAS_WIDGET_EXTENSION;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.10;
 				TARGETED_DEVICE_FAMILY = "1,2";
