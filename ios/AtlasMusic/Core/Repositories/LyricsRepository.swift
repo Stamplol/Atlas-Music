@@ -29,7 +29,7 @@ final class LyricsRepository {
         guard let url = track.resolvedURL else { return nil }
         let asset = AVAsset(url: url)
         for item in asset.commonMetadata {
-            let id = item.identifier.rawValue.lowercased()
+            let id = item.identifier?.rawValue.lowercased() ?? ""
             guard id.contains("lyric"), let value = try? item.stringValue, !value.isEmpty else { continue }
             let parsed = Lyrics.parse(value)
             if !parsed.isEmpty {

@@ -84,7 +84,7 @@ final class Track {
     var resolvedURL: URL? {
         if let bookmark = securityBookmark {
             var stale = false
-            if let url = try? URL(resolvingBookmarkData: bookmark, options: [.withSecurityScope], relativeTo: nil, bookmarkDataIsStale: &stale) {
+            if let url = try? URL(resolvingBookmarkData: bookmark, options: [], relativeTo: nil, bookmarkDataIsStale: &stale) {
                 if url.startAccessingSecurityScopedResource() { return url }
                 return url
             }

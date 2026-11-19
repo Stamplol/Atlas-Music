@@ -50,6 +50,12 @@ final class AudioEngine {
 
     /// Every mutable field below is only touched on this serial queue.
     private let queue = DispatchQueue(label: "com.atlas.music.audio", qos: .userInitiated)
+    /// NotificationCenter's `queue:` parameter takes an OperationQueue; bridge it to our serial queue.
+    private lazy var notificationQueue: OperationQueue = {
+        let q = OperationQueue()
+        q.underlyingQueue = queue
+        return q
+    }()
     private var watcher: DispatchSourceTimer?
     private var observerTokens: [NSObjectProtocol] = []
 
@@ -93,17 +99,17 @@ final class AudioEngine {
         // Observers are delivered on our serial queue, so handlers need no extra hop.
         observerTokens.append(
             NotificationCenter.default.addObserver(
-                forName: AVAudioSession.interruptionNotification, object: nil, queue: queue
+                forName: AVAudioSession.interruptionNotification, object: nil, queue: notificationQueue
             ) { [weak self] note in self?.handleInterruption(note) }
         )
         observerTokens.append(
             NotificationCenter.default.addObserver(
-                forName: AVAudioSession.routeChangeNotification, object: nil, queue: queue
+                forName: AVAudioSession.routeChangeNotification, object: nil, queue: notificationQueue
             ) { [weak self] note in self?.handleRouteChange(note) }
         )
         observerTokens.append(
             NotificationCenter.default.addObserver(
-                forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: queue
+                forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: notificationQueue
             ) { [weak self] _ in self?.handleMediaServicesReset() }
         )
     }

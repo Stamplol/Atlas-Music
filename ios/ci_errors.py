@@ -16,9 +16,22 @@ HEADERS = {"User-Agent": "atlas-ios-ci-helper", "Accept": "application/vnd.githu
 
 
 def get(url):
-    req = urllib.request.Request(url, headers=HEADERS)
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return r.read()
+    for attempt in range(20):
+        req = urllib.request.Request(url, headers=HEADERS)
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return r.read()
+        except urllib.error.HTTPError as e:
+            if e.code == 403 and "rate limit" in str(e).lower():
+                reset = e.headers.get("X-RateLimit-Reset")
+                delay = 60
+                if reset:
+                    delay = max(5, min(600, int(reset) - int(time.time()) + 5))
+                print(f"  rate limited; waiting {delay}s (attempt {attempt + 1})")
+                time.sleep(delay)
+                continue
+            raise
+    raise RuntimeError("GitHub API remained rate limited")
 
 
 def main():
@@ -40,7 +53,7 @@ def main():
                 break
             if match:
                 run = match
-            time.sleep(10)
+            time.sleep(30)
     print(f"Run {run['id']}  status={run['status']}  conclusion={run.get('conclusion')}")
     print(f"URL: {run['html_url']}")
     sha = run["head_sha"]

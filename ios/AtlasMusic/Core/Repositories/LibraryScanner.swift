@@ -33,8 +33,11 @@ final class LibraryScanner {
 
         let custom = resolveCustomFolder()
         var accessedSecurityScope = false
-        if let custom, let url = custom.url, url.startAccessingSecurityScopedResource() {
-            accessedSecurityScope = true
+        if let custom {
+            let url = custom.url
+            if url.startAccessingSecurityScopedResource() {
+                accessedSecurityScope = true
+            }
         }
 
         var roots: [(url: URL, isCustom: Bool)] = []
@@ -55,7 +58,7 @@ final class LibraryScanner {
         )
         var seenURIs = Set<String>()
         let audioExtensions: Set<String> = ["mp3", "flac", "wav", "m4a", "aac", "ogg", "oga", "opus", "aiff", "aif"]
-        let keys: Set<URLResourceKey> = [.isRegularFileKey, .fileSizeKey, .creationDateKey, .modificationDateKey]
+        let keys: Set<URLResourceKey> = [.isRegularFileKey, .fileSizeKey, .creationDateKey, .contentModificationDateKey]
 
         for root in roots {
             guard let enumerator = FileManager.default.enumerator(
@@ -82,7 +85,7 @@ final class LibraryScanner {
 
                 let uri = fileURL.absoluteString
                 let sizeBytes = Int64(values.fileSize ?? 0)
-                let dateModified = Int64(values.modificationDate?.timeIntervalSince1970 ?? 0)
+                let dateModified = Int64(values.contentModificationDate?.timeIntervalSince1970 ?? 0)
                 let dateAdded = Int64(values.creationDate?.timeIntervalSince1970 ?? Double(dateModified))
 
                 let previous = existingByURI[uri]
@@ -185,7 +188,7 @@ final class LibraryScanner {
             var stale = false
             if let url = try? URL(
                 resolvingBookmarkData: bookmark,
-                options: [.withSecurityScope],
+                options: [],
                 relativeTo: nil,
                 bookmarkDataIsStale: &stale
             ) {
@@ -233,7 +236,7 @@ final class LibraryScanner {
         )
         for item in asset.commonMetadata {
             guard let value = try? item.stringValue, !value.isEmpty else { continue }
-            let id = item.identifier.rawValue.lowercased()
+            let id = item.identifier?.rawValue.lowercased() ?? ""
             if id.contains("title") {
                 result.title = value
             } else if id.contains("artist") {
