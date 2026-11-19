@@ -3,6 +3,8 @@
 No auth needed for public repos. Run: python ios/ci_errors.py
 """
 import json
+import os
+import subprocess
 import sys
 import time
 import urllib.request
@@ -26,11 +28,19 @@ def main():
         return 1
     run = runs["workflow_runs"][0]
     if "--wait" in sys.argv:
-        deadline = time.time() + 420
-        while run["status"] != "completed" and time.time() < deadline:
-            time.sleep(10)
+        local_sha = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=os.path.dirname(__file__) + "/..", text=True
+        ).strip()
+        deadline = time.time() + 480
+        while time.time() < deadline:
             runs = json.loads(get(f"{API}/actions/runs?branch={BRANCH}&per_page=5"))
-            run = next((r for r in runs["workflow_runs"] if r["id"] == run["id"]), run)
+            match = next((r for r in runs["workflow_runs"] if r["head_sha"] == local_sha), None)
+            if match and match["status"] == "completed":
+                run = match
+                break
+            if match:
+                run = match
+            time.sleep(10)
     print(f"Run {run['id']}  status={run['status']}  conclusion={run.get('conclusion')}")
     print(f"URL: {run['html_url']}")
     sha = run["head_sha"]

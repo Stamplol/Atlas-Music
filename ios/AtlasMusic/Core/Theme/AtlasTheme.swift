@@ -26,10 +26,10 @@ extension Color {
     init(atlasHex: UInt32) {
         self.init(
             .sRGB,
-            red: CGFloat((atlasHex >> 16) & 0xFF) / 255,
-            green: CGFloat((atlasHex >> 8) & 0xFF) / 255,
-            blue: CGFloat(atlasHex & 0xFF) / 255,
-            opacity: CGFloat((atlasHex >> 24) & 0xFF) / 255
+            red: CGFloat((atlasHex >> 16) & 0xFF) / CGFloat(255),
+            green: CGFloat((atlasHex >> 8) & 0xFF) / CGFloat(255),
+            blue: CGFloat(atlasHex & 0xFF) / CGFloat(255),
+            opacity: CGFloat((atlasHex >> 24) & 0xFF) / CGFloat(255)
         )
     }
 

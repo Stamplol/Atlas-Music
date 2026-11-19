@@ -25,8 +25,8 @@ enum Lyrics {
 
             var timestamps: [Int64] = []
             for match in matches {
-                let min = groupValue(match, 1, in: rawLine) ?? 0
-                let sec = groupValue(match, 2, in: rawLine) ?? 0
+                let min = Int(groupValue(match, 1, in: rawLine) ?? "0") ?? 0
+                let sec = Int(groupValue(match, 2, in: rawLine) ?? "0") ?? 0
                 let rawFrac = groupValue(match, 3, in: rawLine) ?? ""
                 let padded = (rawFrac + "000").prefix(3)
                 let frac = Int64(padded) ?? 0

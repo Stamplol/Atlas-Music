@@ -28,7 +28,7 @@ enum OutputRouter {
 
     private static func kind(of port: AVAudioSession.Port) -> OutputKind {
         if port == .builtInSpeaker { return .speaker }
-        if port == .headphones || port == .headsetMic || port == .lineOut || port == .builtInLineOut {
+        if port == .headphones || port == .headsetMic || port == .lineOut {
             return .wired
         }
         if port == .bluetoothA2DP || port == .bluetoothHFP || port == .bluetoothLE {

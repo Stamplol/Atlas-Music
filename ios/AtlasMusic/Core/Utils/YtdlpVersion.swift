@@ -21,8 +21,8 @@ struct YtdlpVersion: Comparable, CustomStringConvertible {
 
     var stringValue: String {
         rev > 0
-            ? String(format: "%04d.%02d.%02d.%d", locale: locale, year, month, day, rev)
-            : String(format: "%04d.%02d.%02d", locale: locale, year, month, day)
+            ? String(format: "%04d.%02d.%02d.%d", locale: YtdlpVersion.locale, year, month, day, rev)
+            : String(format: "%04d.%02d.%02d", locale: YtdlpVersion.locale, year, month, day)
     }
 
     var description: String { stringValue }

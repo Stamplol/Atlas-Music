@@ -54,7 +54,7 @@ enum UrlValidator {
         if trimmed.unicodeScalars.contains(where: { CharacterSet.whitespacesAndNewlines.contains($0) }) { return nil }
         guard let components = URLComponents(string: trimmed),
               let scheme = components.scheme?.lowercased(), scheme == "https",
-              components.userInfo == nil,
+              components.user == nil, components.password == nil,
               let host = components.host?.lowercased() else { return nil }
 
         let path = components.path
@@ -72,8 +72,8 @@ enum UrlValidator {
                 let slug = group(setMatch, 2, in: path)
                 let tokenValue = group(setMatch, 3, in: path)
                 var token: String? = nil
-                if let candidate = tokenValue,
-                   !candidate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let candidate = tokenValue ?? ""
+                if !candidate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     token = candidate
                 }
                 return YoutubeLink(nil, "scset:\(uploader)/\(slug)", isPlaylist: true,

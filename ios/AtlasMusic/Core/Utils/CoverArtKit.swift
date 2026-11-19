@@ -179,7 +179,7 @@ struct ProceduralCoverView: View {
         }
         func box(_ origin: CGPoint, _ s: CGSize, _ c: Color,
                  stroke: Bool = false, _ w: CGFloat = 1.5) {
-            let p = Path(rect: CGRect(origin: origin, size: s))
+            let p = Path(CGRect(origin: origin, size: s))
             if stroke { ctx.stroke(p, with: .color(c), lineWidth: w) }
             else { ctx.fill(p, with: .color(c)) }
         }
