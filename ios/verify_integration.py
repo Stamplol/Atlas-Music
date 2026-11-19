@@ -73,6 +73,22 @@ def main():
             print(f"  BRACE-DELTA {os.path.relpath(path, ROOT)}: {bal}")
             problems += 1
 
+    # Verify every PBXFileReference path actually resolves on disk. Xcode resolves
+    # group-scoped references against the ios/ project root because the generated
+    # groups have names but no `path` attribute.
+    pbx = os.path.join(os.path.dirname(__file__), "AtlasMusic.xcodeproj", "project.pbxproj")
+    if os.path.isfile(pbx):
+        text = open(pbx, encoding="utf-8", errors="replace").read()
+        refs = re.findall(r'path = "?([^";]+)"?; sourceTree = "<group>";', text)
+        ios_root = os.path.dirname(ROOT)
+        broken = [r for r in refs if not os.path.exists(os.path.join(ios_root, *r.split("/")))]
+        print(f"PBXFileReference paths checked: {len(refs)} | broken: {len(broken)}")
+        for b in broken:
+            print("  BROKEN REF", b)
+            problems += 1
+    else:
+        print("PBXFileReference check: project.pbxproj not generated yet")
+
     fonts = os.path.join(ROOT, "Resources", "Fonts")
     ttfs = [f for f in os.listdir(fonts)] if os.path.isdir(fonts) else []
     print(f"Fonts copied: {len(ttfs)} {ttfs if len(ttfs) < 3 else ''}")

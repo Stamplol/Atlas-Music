@@ -280,13 +280,17 @@ file_ref_lines: list[str] = []
 for path in all_files:
     key = rel(path)
     file_ref_lines.append(
+        # Groups carry only a `name`, not a `path`, so a group-scoped file reference
+        # resolves against the ios/ project root. Emit the full relative path, otherwise
+        # Xcode looks for ios/AtlasWidgets.swift instead of ios/AtlasMusic/Widgets/AtlasWidgets.swift.
         f"\t\t{file_ref_ids[key]} /* {path.name} */ = {{isa = PBXFileReference; "
-        f"lastKnownFileType = {file_type[path.suffix.lower()]}; path = {quote(path.name)}; "
+        f"lastKnownFileType = {file_type[path.suffix.lower()]}; path = {quote(rel(path))}; "
         'sourceTree = "<group>"; };'
     )
 file_ref_lines.append(
     f"\t\t{catalog_ref_id} /* Assets.xcassets */ = {{isa = PBXFileReference; "
-    'lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };'
+    f"lastKnownFileType = folder.assetcatalog; path = {quote(rel(asset_catalog))}; "
+    'sourceTree = "<group>"; };'
 )
 file_ref_lines.append(
     f"\t\t{product_ref_id} /* {TARGET_NAME}.app */ = {{isa = PBXFileReference; "
