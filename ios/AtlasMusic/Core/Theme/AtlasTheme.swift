@@ -266,7 +266,8 @@ enum Radius {
 
 enum AtlasMotion {
     /// MERIDIAN SETTLE — artwork and progress arc.
-    static let settle = Spring(duration: 0.45, bounce: 0.18)
+    /// Wrapped in `Animation` so it works with both `withAnimation` and `.animation(_:value:)`.
+    static let settle = Animation.spring(Spring(duration: 0.45, bounce: 0.18))
     /// Press, chip and small state feedback.
-    static let quick = Spring(duration: 0.25, bounce: 0.05)
+    static let quick = Animation.spring(Spring(duration: 0.25, bounce: 0.05))
 }
