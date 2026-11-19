@@ -22,7 +22,9 @@ concurrency:
 jobs:
   build-and-test:
     name: Build + XCTest (iOS 17 simulator)
-    runs-on: macos-14
+    # macos-14 resolves to an arm64 runner that is not available on every plan;
+    # the Intel label is universally available and ships Xcode 16 (iOS 17+ SDK).
+    runs-on: macos-15-intel
     timeout-minutes: 35
 
     steps:
