@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import AVFoundation
+import Observation
 
 // Atlas iOS — SwiftData-backed library queries, play history, tag edits and search.
 
@@ -18,6 +19,7 @@ struct SearchResults {
 }
 
 @MainActor
+@Observable
 final class MusicRepository {
     /// Shared with `LibraryScanner` so both operate on one SwiftData context.
     let context: ModelContext

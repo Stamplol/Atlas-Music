@@ -3,8 +3,8 @@
 No auth needed for public repos. Run: python ios/ci_errors.py
 """
 import json
-import re
 import sys
+import time
 import urllib.request
 
 REPO = "Stamplol/Atlas-Music"
@@ -25,6 +25,12 @@ def main():
         print("No workflow runs found")
         return 1
     run = runs["workflow_runs"][0]
+    if "--wait" in sys.argv:
+        deadline = time.time() + 420
+        while run["status"] != "completed" and time.time() < deadline:
+            time.sleep(10)
+            runs = json.loads(get(f"{API}/actions/runs?branch={BRANCH}&per_page=5"))
+            run = next((r for r in runs["workflow_runs"] if r["id"] == run["id"]), run)
     print(f"Run {run['id']}  status={run['status']}  conclusion={run.get('conclusion')}")
     print(f"URL: {run['html_url']}")
     sha = run["head_sha"]

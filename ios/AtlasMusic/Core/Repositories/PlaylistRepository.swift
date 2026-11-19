@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import Observation
 
 // Atlas iOS — Playlist CRUD and ordered membership (mirrors Android PlaylistRepository).
 
@@ -9,6 +10,7 @@ enum PlaylistError: Error {
 }
 
 @MainActor
+@Observable
 final class PlaylistRepository {
     private let context: ModelContext
 
