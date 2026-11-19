@@ -39,6 +39,10 @@ builds all three targets for the simulator with signing disabled, runs the XCTes
 uploads the `.xcresult` plus failure logs. To reproduce it locally on a Mac, run
 `bash ios/build_ci.sh`. Build artifacts go to `ios/.build/` (git-ignored).
 
+`xcodebuild` errors are converted into GitHub `::error::` annotations by `ios/xcode_annotate.py`,
+so they show up in the Checks API. `python ios/ci_errors.py --wait` polls until the run for the
+current local commit finishes and prints only the failure annotations — no need to paste logs.
+
 There is no Swift Package Manager manifest by design: the generated project references the
 checked-in sources directly, so Xcode picks up new files as soon as you re-run the generator.
 
