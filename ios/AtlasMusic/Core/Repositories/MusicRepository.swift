@@ -272,7 +272,7 @@ final class MusicRepository {
 
         for item in asset.commonMetadata {
             guard let value = try? item.stringValue, !value.isEmpty else { continue }
-            let id = item.identifier.rawValue.lowercased()
+            let id = item.identifier?.rawValue.lowercased() ?? ""
             if id.contains("title") {
                 title = value
             } else if id.contains("artist") {
