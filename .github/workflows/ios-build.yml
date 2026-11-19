@@ -1,0 +1,111 @@
+name: iOS build & test
+
+# Compiles the SwiftUI port on a real macOS/Xcode runner and runs the XCTest suite.
+# The generated .xcodeproj is regenerated from ios/ sources on every run, so CI
+# catches both source errors and generator drift.
+
+on:
+  push:
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios-build.yml'
+  pull_request:
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios-build.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build + XCTest (iOS 17 simulator)
+    runs-on: macos-14
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select newest installed Xcode
+        run: |
+          set -euo pipefail
+          XCODE="$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n 1 || true)"
+          if [ -n "$XCODE" ]; then
+            sudo xcode-select -s "$XCODE"
+          fi
+          xcodebuild -version
+          xcrun simctl list devices available | grep -c iPhone || true
+
+      - name: Generate Xcode project (app + widget extension + test target)
+        run: |
+          set -euo pipefail
+          python3 ios/generate_xcodeproj.py
+          mkdir -p ios/.build
+
+      - name: Pick an available iPhone simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          SIM="$(xcrun simctl list devices available \
+            | grep -E '^    iPhone (1[5-9]|[2-9][0-9])' \
+            | head -n 1 \
+            | sed -E 's/^ +([^ ]+) .*/\1/')"
+          if [ -z "$SIM" ]; then
+            echo "::error::No available iPhone simulator found on this runner"
+            xcrun simctl list devices available
+            exit 1
+          fi
+          echo "name=$SIM" >> "$GITHUB_OUTPUT"
+          echo "Using simulator: $SIM"
+
+      - name: Build all targets for simulator (no signing)
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project ios/AtlasMusic.xcodeproj \
+            -scheme AtlasMusic \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath ios/.build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee ios/.build/xcodebuild-build.log
+
+      - name: Run unit tests (60 XCTest cases)
+        run: |
+          set -euo pipefail
+          rm -rf ios/.build/AtlasMusic.xcresult
+          xcodebuild test \
+            -project ios/AtlasMusic.xcodeproj \
+            -scheme AtlasMusic \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=${{ steps.sim.outputs.name }}' \
+            -derivedDataPath ios/.build/DerivedData \
+            -resultBundlePath ios/.build/AtlasMusic.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee ios/.build/xcodebuild-test.log
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-xcresult
+          path: ios/.build/AtlasMusic.xcresult
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-failure-logs
+          path: |
+            ios/.build/xcodebuild-build.log
+            ios/.build/xcodebuild-test.log
+            ios/.build/DerivedData/Logs
+          if-no-files-found: warn
+          retention-days: 7
